@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<title>WebSocket example</title>
+<meta charset='UTF-8'/>
+<script src="http://code.jquery.com/jquery.min.js"></script>
+<script>
+$(document).ready(function () {
+    $('#loginform').on('submit', function (e) {
+        e.preventDefault();
+
+        console.log('submit');
+        var whoami = '';
+        var hist = $('#ulhist');
+        var msg = $('#mymsg');
+
+        var newspan = function (clss) {
+            return $('<span/>').attr('class', clss);
+        };
+        var chatlog = function (item) {
+            hist.append($('<li/>').append(item));
+        };
+        var chatmsg = function(who, msg) {
+            chatlog(newspan('')
+                   .append(newspan('sender').text(who))
+                   .append(': ')
+                   .append(newspan('message').append(msg)));
+        };
+
+        var ws = new WebSocket('ws://' + location.host + '/ws');
+        ws.onopen = function () {
+            ws.send(JSON.stringify({'type': 'login', 'user': $('#inplogin').val() }));
+        };
+        ws.onclose = function (ev) {
+            chatlog(newspan('error').append('connection closed(' + ev.code + '): ' + ev.reason));
+            ws.close();
+        };
+        ws.onerror = function (error) {
+            console.log('WS error: ' + error);
+            chatlog(newspan('error').text('Error: ' + error));
+        };
+        ws.onmessage = function (e) {
+            console.log('WS: ' + e.data);
+
+            var msg = JSON.parse(e.data);
+            switch (msg.type) {
+              case 'login':
+                if (msg.status == 'ok') {
+                    whoami = $('#inplogin').val();
+                    chatlog(newspan('').append(newspan('info').text('You joined the chat as '))
+                                       .append(newspan('sender').text(whoami)));
+                } else {
+                    chatlog(newspan('error').text('Failed to sign in: ' + msg.status));
+                }
+                break;
+              case 'recv':
+                chatmsg(msg.from, msg.text);
+                break;
+              case 'sent':
+                console.log('sent');
+                break;
+              case 'join':
+                chatlog(newspan('').append(newspan('sender').text(msg.user))
+                                   .append(newspan('info').text(' joined')));
+                break;
+              case 'present':
+                chatlog(newspan('').append(newspan('sender').text(msg.user))
+                                   .append(newspan('info').text(' present')));
+                break;
+              case 'exit':
+                chatlog(newspan('').append(newspan('sender').text(msg.user))
+                                   .append(newspan('info').text(' quit')));
+                break;
+              default:
+                chatlog(newspan('info').text(e.data));
+            }
+        };
+
+        $('#loginform').hide();
+        $('#chat').show();
+
+        msg.on('keyup', function (ev) {
+            if (ev.which == 13) {
+                var msgtxt = msg.val();
+                var sent = {'type': 'sent', 'text' : msgtxt }
+                ws.send(JSON.stringify(sent))
+
+                chatmsg(whoami, msgtxt);
+                msg.val('');
+            }
+        });
+    });
+});
+</script>
+<style type='text/css'>
+#login {
+  text-align: center;
+}
+#inplogin {
+  font-size:200%;
+  text-align:center;
+}
+#chat {
+  text-align: center;
+  margin-left: 10%;
+  margin-right: 10%;
+  display: none;
+}
+.sender {
+  color:blue;
+}
+.error: {
+  font-weight:bold;
+  color:red;
+}
+.info {
+  color:grey;
+}
+.message {
+  font-weight:bold;
+}
+.pending_message {
+  color:grey;
+}
+</style>
+</head>
+<body>
+<div id='login'>
+<form id='loginform'>
+    <h2>Please enter your login</h2><br/>
+    <input id='inplogin' type='text' name='inplogin'/><br/>
+    <input id='submlogin' type='submit'name='submlogin' value='log in'/></br/>
+</form>
+</div>
+<div id='chat'>
+ <div id='hist'>
+  <ul id='ulhist'></ul>
+ </div>
+ <div id='mesg'>
+  <input type='text' id='mymsg' />
+ </div>
+</div>
+</body>
+</html>
