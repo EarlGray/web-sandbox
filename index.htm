@@ -5,90 +5,137 @@
 <meta charset='UTF-8'/>
 <script src="http://code.jquery.com/jquery.min.js"></script>
 <script>
+
+function WSProtocol(user, wsurl, action) {
+    var ws = new WebSocket(wsurl);
+    var send = function(data) { ws.send(JSON.stringify(data)); };
+
+    ws.onopen = function () {
+        console.log('ws.onopen()');
+        send({'type': 'login', 'user': user});
+    };
+    ws.onclose = function (ev) {
+        action.ws_closed(ev);
+        ws.close();
+    };
+    ws.onerror = function (err) {
+        action.ws_error(err);
+    };
+    ws.onmessage = function (ev) {
+        var msg = JSON.parse(ev.data);
+        switch (msg.type) {
+          case 'login':
+            if (msg.status == 'ok') action.login_ok(msg.users);
+            else action.login_failed(msg.status);
+            break;
+          case 'recv': action.msg_received(msg); break;
+          case 'sent': action.msg_sent(msg.msgid); break;
+          case 'join': action.user_joined(msg.user); break;
+          case 'exit': action.user_quit(msg.user); break;
+          default: action.unknown(ev.data);
+        }
+    };
+
+    return { 'ws': ws, 'send': send };
+}
+
+// WebSocket connection
+var wsconn;
+var user;
+
+function appendMessage(sender, text) {
+    var row = $('<tr/>');
+    row.append($('<td/>').attr('class', 'histuser').append(sender));
+    row.append($('<td/>').attr('class', 'histmsg').append(text));
+    $('#ulhist').append(row);
+
+    var histdiv = $('#hist');
+    histdiv.scrollTop(histdiv[0].scrollHeight);
+}
+function adjustHeight() {
+    var histdiv = $('#hist');
+    histdiv.height($(window).height() - $('#message').outerHeight() - 50);
+    histdiv.scrollTop(histdiv[0].scrollHeight);
+}
+
+
+function userJoined(user) {
+    var row = $('<tr/>');
+    row.append($('<td/>').text(user));
+    $('#rstr').append(row);
+
+    appendMessage('chat', $('<span/>').attr('class', 'msginfo').text('' + user + ' joined'));
+}
+function userQuit(user) {
+    console.log(user + ' quit');
+    var tbody = $('#rstr tbody')[0];
+    for (var elem in tbody.children) {
+        var c = tbody.children[elem];
+        if (c === undefined) continue;
+        if (c.textContent == user) {
+            tbody.removeChild(c);
+        }
+    }
+    appendMessage('chat', $('<span/>').attr('class', 'msginfo').text('' + user + ' quit'));
+}
+
+function msgRecv(msg) {
+    console.log('msgRecv(' + JSON.stringify(msg) + ')');
+    appendMessage(msg.from, msg.text);
+}
+function msgSent(msgid) {
+    console.log('msgSent');
+}
+
+function onLogin(msg) {
+    $('#loginform').hide();
+    $('#chat').show();
+
+    adjustHeight();
+    $(window).resize(function (ev) { adjustHeight(); });
+
+    userJoined(user);
+
+    var msg = $('#msg');
+    msg.on('keyup', function (ev) {
+        if (ev.which == 13) {
+            var msgtext = msg.val();
+            wsconn.send({ 'type': 'sent', 'text': msgtext });
+            appendMessage(user, msgtext);    
+            msg.val('');
+        }
+    });
+}
+
+function onFailedLogin(err) {
+    console.log('login failed');
+}
+
+function initWS(user) {
+    var url = 'ws://' + window.location.host + '/ws';
+    console.log('connecting to ' + url + '...');
+    return WSProtocol(user, url, {
+        'login_ok': onLogin,
+        'login_failed': onFailedLogin, 
+
+        'msg_received': msgRecv,
+        'msg_sent': msgSent,
+
+        'user_joined': userJoined,
+        'user_quit': userQuit,
+
+        'unknown': function (data) { console.log('unknown message: ' + data); },
+        'ws_error': function (err) { console.log('WS error: ' + err); },
+        'ws_closed': function () { console.log('WS closed'); },
+    });
+}
+
 $(document).ready(function () {
     $('#loginform').on('submit', function (e) {
         e.preventDefault();
 
-        console.log('submit');
-        var whoami = '';
-        var hist = $('#ulhist');
-        var msg = $('#mymsg');
-
-        var newspan = function (clss) {
-            return $('<span/>').attr('class', clss);
-        };
-        var chatlog = function (item) {
-            hist.append($('<li/>').append(item));
-        };
-        var chatmsg = function(who, msg) {
-            chatlog(newspan('')
-                   .append(newspan('sender').text(who))
-                   .append(': ')
-                   .append(newspan('message').append(msg)));
-        };
-
-        var ws = new WebSocket('ws://' + location.host + '/ws');
-        ws.onopen = function () {
-            ws.send(JSON.stringify({'type': 'login', 'user': $('#inplogin').val() }));
-        };
-        ws.onclose = function (ev) {
-            chatlog(newspan('error').append('connection closed(' + ev.code + '): ' + ev.reason));
-            ws.close();
-        };
-        ws.onerror = function (error) {
-            console.log('WS error: ' + error);
-            chatlog(newspan('error').text('Error: ' + error));
-        };
-        ws.onmessage = function (e) {
-            console.log('WS: ' + e.data);
-
-            var msg = JSON.parse(e.data);
-            switch (msg.type) {
-              case 'login':
-                if (msg.status == 'ok') {
-                    whoami = $('#inplogin').val();
-                    chatlog(newspan('').append(newspan('info').text('You joined the chat as '))
-                                       .append(newspan('sender').text(whoami)));
-                } else {
-                    chatlog(newspan('error').text('Failed to sign in: ' + msg.status));
-                }
-                break;
-              case 'recv':
-                chatmsg(msg.from, msg.text);
-                break;
-              case 'sent':
-                console.log('sent');
-                break;
-              case 'join':
-                chatlog(newspan('').append(newspan('sender').text(msg.user))
-                                   .append(newspan('info').text(' joined')));
-                break;
-              case 'present':
-                chatlog(newspan('').append(newspan('sender').text(msg.user))
-                                   .append(newspan('info').text(' present')));
-                break;
-              case 'exit':
-                chatlog(newspan('').append(newspan('sender').text(msg.user))
-                                   .append(newspan('info').text(' quit')));
-                break;
-              default:
-                chatlog(newspan('info').text(e.data));
-            }
-        };
-
-        $('#loginform').hide();
-        $('#chat').show();
-
-        msg.on('keyup', function (ev) {
-            if (ev.which == 13) {
-                var msgtxt = msg.val();
-                var sent = {'type': 'sent', 'text' : msgtxt }
-                ws.send(JSON.stringify(sent))
-
-                chatmsg(whoami, msgtxt);
-                msg.val('');
-            }
-        });
+        user = $('#inplogin').val();
+        wsconn = initWS(user);
     });
 });
 </script>
@@ -100,45 +147,107 @@ $(document).ready(function () {
   font-size:200%;
   text-align:center;
 }
+
+body {
+}
+
 #chat {
-  text-align: center;
-  margin-left: 10%;
-  margin-right: 10%;
-  display: none;
+    display: none;
+    max-width: 1000px;
+    min-width: 400px;
+    font-family: 'Lora', 'PT Sans', sans-serif;
+    font-size: 12pt;
+    background-color: #f0f0f0;
+    border-radius: 10px;
 }
-.sender {
-  color:blue;
+
+/* .brd { border: 1px dashed blue; } */
+.content { background-color: white; }
+
+#hist {
+    width: 70%;
+    float: left;
+    display: block-inline;
+    margin: 0.5em;
 }
-.error: {
-  font-weight:bold;
-  color:red;
+
+#hist {
+    overflow-y: scroll;
+    overflow-x: hidden;
 }
-.info {
-  color:grey;
+#ulhist tr {
+    max-height: 1em;
 }
-.message {
-  font-weight:bold;
+
+.histuser {
+    color: blue;
+    width: 5em;
+    text-align: right;
+    background-color: #f8f8ff;
+    padding: 0.2em 0.5em 0.1em 0.2em;
+    margin-right: 0.5em;
 }
-.pending_message {
-  color:grey;
+.histmsg {
+    text-decoration: italic;
+    padding: 0 0 0 1em;
 }
+
+#roster {
+    width: 25%;
+    height: 80%;
+    margin: 0.5em 0 0 0;
+    float: left;
+    display: block-inline;
+}
+#rstr {
+    margin: 0.5em;
+}
+.rstrth {
+    /*border: 1px solid #ccc;*/
+}
+.rstrtd {
+    padding-left: 1.5em;
+}
+
+#message {
+    clear: both;
+}
+#msg {
+    margin: 0.5em;
+    width: 70%;
+    height: 2em;
+    font-size: 12pt;
+}
+
+.msginfo {
+    font-style: italic;
+    color: #ccc;
+}
+
 </style>
 </head>
 <body>
 <div id='login'>
-<form id='loginform'>
+  <form id='loginform'>
     <h2>Please enter your login</h2><br/>
     <input id='inplogin' type='text' name='inplogin'/><br/>
     <input id='submlogin' type='submit'name='submlogin' value='log in'/></br/>
-</form>
+  </form>
 </div>
-<div id='chat'>
- <div id='hist'>
-  <ul id='ulhist'></ul>
- </div>
- <div id='mesg'>
-  <input type='text' id='mymsg' />
- </div>
+<div id='chat' class='brd'>
+    <div id='hist' class='content brd'>
+        <table id='ulhist'>
+            <tbody></tbody>
+        </table>
+    </div>
+    <div id='roster' class='brd content'>
+        <table id='rstr' class=''>
+            <tr><th>user list<hr/></th></tr>
+        </table>
+    </div>
+    <div id='message' class='brd'>
+        <input type='text' id='msg' />
+    </div>
 </div>
 </body>
 </html>

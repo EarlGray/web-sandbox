@@ -49,10 +49,11 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         else:
             self.user = user
 
+            users = [];
             for user, ws in sessions.iteritems():
                 if user != self.user:
-                    # send 'present': user to me
-                    presentmsg = json.dumps({'type': 'present', 'user': user})
+                    # send 'joined': user to me
+                    presentmsg = json.dumps({'type': 'join', 'user': user})
                     self.write_message(presentmsg)
                     # send 'joined': me to user
                     joinmsg = json.dumps({'type': 'join', 'user': self.user})
