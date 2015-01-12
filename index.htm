@@ -26,7 +26,7 @@ function WSProtocol(user, wsurl, action) {
         switch (msg.type) {
           case 'login':
             if (msg.status == 'ok') action.login_ok(msg.users);
-            else action.login_failed(msg.status);
+            else action.login_failed(msg.reason);
             break;
           case 'recv': action.msg_received(msg); break;
           case 'sent': action.msg_sent(msg.msgid); break;
@@ -87,8 +87,13 @@ function msgSent(msgid) {
     console.log('msgSent');
 }
 
+function wsClosed() {
+    console.log('wsClosed');
+    appendMessage('chat', $('<span/>').attr('class', 'msgerr').text('connection closed by server'));
+}
+
 function onLogin(msg) {
-    $('#loginform').hide();
+    $('#login').hide();
     $('#chat').show();
 
     adjustHeight();
@@ -109,6 +114,7 @@ function onLogin(msg) {
 
 function onFailedLogin(err) {
     console.log('login failed');
+    $('#loginfail').text('Login failed: ' + err);
 }
 
 function initWS(user) {
@@ -126,11 +132,31 @@ function initWS(user) {
 
         'unknown': function (data) { console.log('unknown message: ' + data); },
         'ws_error': function (err) { console.log('WS error: ' + err); },
-        'ws_closed': function () { console.log('WS closed'); },
+        'ws_closed': wsClosed,
     });
 }
 
+function userFromQuery() {
+    var qs = window.location.search.substring(1);
+    if (qs == '') return null;
+
+    qs = qs.split('&');
+    for (var i = 0; i < qs.length; ++i) {
+        var q = qs[i];
+        var eqindex = q.indexOf('=');
+        if (q.substr(0, eqindex) == 'user')
+            return q.substr(eqindex + 1);
+    }
+    return null;
+}
+
 $(document).ready(function () {
+    var quser = userFromQuery();
+    if (quser !== null) {
+        user = quser;
+        wsconn = initWS(user);
+    }
+
     $('#loginform').on('submit', function (e) {
         e.preventDefault();
 
@@ -140,25 +166,44 @@ $(document).ready(function () {
 });
 </script>
 <style type='text/css'>
+.darkbg { background-color: #e8e9e8 ; }
+.loginwidth {
+  width: 10%;
+  min-width: 10em;
+  margin: 0.2em;
+}
 #login {
+  padding: 2em;
+  margin: 0 auto;
   text-align: center;
+  max-width: 800px;
+  min-width: 400px;
+  width: 40%;
+  border-radius:0.5em;
 }
 #inplogin {
   font-size:200%;
   text-align:center;
 }
-
-body {
+#submlogin {
+  font-size: 140%;
+  background-color: #c0ffc0;
+  border-radius: 1em;
+}
+#loginfail {
+  margin: 0 auto;
+  color: red;
+  font-weight: bold;
+  text-align: center;
 }
 
 #chat {
-    display: none;
-    max-width: 1000px;
-    min-width: 400px;
-    font-family: 'Lora', 'PT Sans', sans-serif;
-    font-size: 12pt;
-    background-color: #f0f0f0;
-    border-radius: 10px;
+  display: none;
+  max-width: 1000px;
+  min-width: 400px;
+  font-family: 'Lora', 'PT Sans', sans-serif;
+  font-size: 12pt;
+  border-radius: 10px;
 }
 
 /* .brd { border: 1px dashed blue; } */
@@ -223,31 +268,38 @@ body {
     font-style: italic;
     color: #ccc;
 }
+.msgerr {
+    font-weight: bold;
+    color: red;
+}
 
 </style>
 </head>
 <body>
-<div id='login'>
+
+<div id='login' class='darkbg'>
   <form id='loginform'>
-    <h2>Please enter your login</h2><br/>
-    <input id='inplogin' type='text' name='inplogin'/><br/>
-    <input id='submlogin' type='submit'name='submlogin' value='log in'/></br/>
+    <h2>Please enter your login</h2>
+    <input id='inplogin' class='loginwidth' type='text' name='inplogin' autofocus /><br/>
+    <input id='submlogin' class='loginwidth' type='submit'name='submlogin' value='log in'/></br/>
+    <div id='loginfail' class='loginwidth'></div>
   </form>
 </div>
-<div id='chat' class='brd'>
-    <div id='hist' class='content brd'>
-        <table id='ulhist'>
-            <tbody></tbody>
-        </table>
-    </div>
-    <div id='roster' class='brd content'>
-        <table id='rstr' class=''>
-            <tr><th>user list<hr/></th></tr>
-        </table>
-    </div>
-    <div id='message' class='brd'>
-        <input type='text' id='msg' />
-    </div>
+
+<div id='chat' class='brd darkbg'>
+  <div id='hist' class='content brd'>
+    <table id='ulhist'>
+       <tbody></tbody>
+    </table>
+  </div>
+  <div id='roster' class='brd content'>
+    <table id='rstr' class=''>
+      <tr><th>user list<hr/></th></tr>
+    </table>
+  </div>
+  <div id='message' class='brd'>
+    <input type='text' id='msg' />
+  </div>
 </div>
 </body>
 </html>
