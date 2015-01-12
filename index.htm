@@ -3,6 +3,7 @@
 <head>
 <title>WebSocket example</title>
 <meta charset='UTF-8'/>
+<link href='http://fonts.googleapis.com/css?family=Noto+Sans:400,700,400italic&subset=cyrillic,latin' rel='stylesheet' type='text/css'>
 <script src="http://code.jquery.com/jquery.min.js"></script>
 <script>
 
@@ -95,6 +96,7 @@ function wsClosed() {
 function onLogin(msg) {
     $('#login').hide();
     $('#chat').show();
+    $('#msg').focus();
 
     adjustHeight();
     $(window).resize(function (ev) { adjustHeight(); });
@@ -201,8 +203,8 @@ $(document).ready(function () {
   display: none;
   max-width: 1000px;
   min-width: 400px;
-  font-family: 'Lora', 'PT Sans', sans-serif;
-  font-size: 12pt;
+  font-family: 'Noto Sans', 'PT Sans', sans-serif;
+  font-size: 11pt;
   border-radius: 10px;
 }
 
@@ -262,11 +264,12 @@ $(document).ready(function () {
     width: 70%;
     height: 2em;
     font-size: 12pt;
+    font-family: 'Noto Sans', sans;
 }
 
 .msginfo {
     font-style: italic;
-    color: #ccc;
+    color: #999;
 }
 .msgerr {
     font-weight: bold;
