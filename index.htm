@@ -75,11 +75,13 @@ var user;
 var notifs;
 var online = false;
 
-function appendMessage(sender, text, time) {
-    var fmttime = new Date(time).toTimeString().split(' ')[0];
+function histTimeFormat(date) {
+    return date.toTimeString().split(' ')[0];
+}
 
+function appendMessage(sender, text, time) {
     var row = $('<tr/>');
-    row.append($('<td/>').attr('class', 'histtime').append(fmttime));
+    row.append($('<td/>').attr('class', 'histtime').append(histTimeFormat(new Date(time))));
     row.append($('<td/>').attr('class', 'histuser').append(sender));
     row.append($('<td/>').attr('class', 'histmsg').append(text));
     $('#ulhist').append(row);
@@ -158,8 +160,9 @@ function onWSClosed() {
         });
         rstrClear();
         appendError('connection closed by server');
-    } else {
         appendInfo('trying to reconnect...');
+    } else {
+        $('#ulhist tbody tr:last td:first').text( histTimeFormat(new Date()) );
     }
 
     // try to reconnect:
@@ -168,7 +171,7 @@ function onWSClosed() {
     }, 5000);
 }
 function onWSError(err) {
-    console.log('onWSError');
+    //console.log('onWSError');
 }
 
 function initNotifs() {
