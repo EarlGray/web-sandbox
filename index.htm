@@ -9,7 +9,7 @@
 
 function WSProtocol(user, wsurl, action) {
     var ws = new WebSocket(wsurl);
-    var send = function(data) { ws.send(JSON.stringify(data)); };
+    var send = function(data) { ws.send(JSON.stringify(data)); }; 
 
     ws.onopen = function () {
         console.log('ws.onopen()');
@@ -21,6 +21,7 @@ function WSProtocol(user, wsurl, action) {
     };
     ws.onerror = function (err) {
         action.ws_error(err);
+        ws.close();
     };
     ws.onmessage = function (ev) {
         var msg = JSON.parse(ev.data);
@@ -37,7 +38,10 @@ function WSProtocol(user, wsurl, action) {
         }
     };
 
-    return { 'ws': ws, 'send': send };
+    return {
+        'ws': ws,
+        'send': send,
+    };
 }
 
 function ChatNotifications() {
@@ -69,6 +73,7 @@ function ChatNotifications() {
 var wsconn;
 var user;
 var notifs;
+var online = false;
 
 function appendMessage(sender, text, time) {
     var fmttime = new Date(time).toTimeString().split(' ')[0];
@@ -82,22 +87,32 @@ function appendMessage(sender, text, time) {
     var histdiv = $('#hist');
     histdiv.scrollTop(histdiv[0].scrollHeight);
 }
+function appendInfo(msg) {
+    appendMessage('', $('<span/>').attr('class', 'msginfo').text(msg), Date.now());
+}
+function appendError(err) {
+    appendMessage('', $('<span/>').attr('class', 'msgerr').text(err), Date.now());
+}
+
 function adjustHeight() {
     var histdiv = $('#hist');
     histdiv.height($(window).height() - $('#message').outerHeight() - 50);
     histdiv.scrollTop(histdiv[0].scrollHeight);
 }
 
-
+function rstrHeader() {
+    $('#rstr').prepend($('<tr/>').append($('<th/>').text('user list').append('<hr/>')));
+}
 function userJoined(user) {
     var row = $('<tr/>');
     row.append($('<td/>').attr('class', 'rstrtd').text(user));
     $('#rstr').append(row);
 
-    appendMessage('', $('<span/>').attr('class', 'msginfo').text('' + user + ' joined'), Date.now());
+    appendInfo('' + user + ' joined');
 }
-function userQuit(user) {
-    console.log(user + ' quit');
+
+function rstrQuit(user) {
+    // remove user from roster
     var tbody = $('#rstr tbody')[0];
     for (var elem in tbody.children) {
         var c = tbody.children[elem];
@@ -106,7 +121,17 @@ function userQuit(user) {
             tbody.removeChild(c);
         }
     }
-    appendMessage('chat', $('<span/>').attr('class', 'msginfo').text('' + user + ' quit'), Date.now());
+}
+function rstrClear() {
+    var tbody = $('#rstr tbody');
+    tbody.empty();
+    rstrHeader();
+}
+
+function userQuit(user) {
+    console.log(user + ' quit');
+    rstrQuit(user);
+    appendInfo('' + user + ' quit');
 }
 
 function msgRecv(msg) {
@@ -118,9 +143,32 @@ function msgSent(msgid) {
     console.log('msgSent');
 }
 
-function wsClosed() {
-    console.log('wsClosed');
-    appendMessage('chat', $('<span/>').attr('class', 'msgerr').text('connection closed by server'), Date.now());
+function onWSClosed() {
+    console.log('onWSClosed');
+
+    if (online) {
+        online = false;
+        // disable sending
+        var msg = $('#msg');
+        msg.off('keyup');
+        msg.on('keyup', function (ev) {
+            if (ev.which == 13) {
+                appendError('you are offline');
+            }
+        });
+        rstrClear();
+        appendError('connection closed by server');
+    } else {
+        appendInfo('trying to reconnect...');
+    }
+
+    // try to reconnect:
+    setTimeout(function () { 
+        wsconn = initWS(user);
+    }, 5000);
+}
+function onWSError(err) {
+    console.log('onWSError');
 }
 
 function initNotifs() {
@@ -139,32 +187,36 @@ function initNotifs() {
 }
 
 function onLogin(msg) {
-    $('#login').hide();
-    $('#chat').show();
-    $('#msg').focus();
+    online = true;
 
-    adjustHeight();
+    if ($('#chat').css('display') == 'none') {
+        // we came from login screen:
+        $('#login').hide();
+        $('#chat').show();
+
+        adjustHeight();
+        $(window).resize(function (ev) { adjustHeight();     });
+
+        rstrHeader();
+
+        initNotifs();
+    }
+
     userJoined(user);
 
-    initNotifs();
-
-    $(window).resize(function (ev) { adjustHeight();     });
-
     var msg = $('#msg');
-    /*msg.change(function (ev) {
-            var msgtext = msg.val();
-            wsconn.send({ 'type': 'sent', 'text': msgtext });
-            appendMessage(user, msgtext);    
-            msg.val('');
-    }); */
+    msg.off('keyup');
     msg.on('keyup', function (ev) {
         if (ev.which == 13) {
+            console.log('msg.keyup');
             var m = { 'type': 'sent', 'time': Date.now(), 'text': msg.val() };
             wsconn.send(m);
             appendMessage(user, m.text, m.time);
             msg.val('');
         }
     });
+
+    $('#msg').focus();
 }
 
 function onFailedLogin(err) {
@@ -186,8 +238,8 @@ function initWS(user) {
         'user_quit': userQuit,
 
         'unknown': function (data) { console.log('unknown message: ' + data); },
-        'ws_error': function (err) { console.log('WS error: ' + err); },
-        'ws_closed': wsClosed,
+        'ws_error': onWSError,
+        'ws_closed': onWSClosed,
     });
 }
 
@@ -362,9 +414,7 @@ $(document).ready(function () {
     </table>
   </div>
   <div id='roster' class='brd'>
-    <table id='rstr' class='content'>
-      <tr><th>user list<hr/></th></tr>
-    </table>
+    <table id='rstr' class='content'></table>
     <div id='settings' class='content'>
       <div id='sett_cap'>settings</div><hr/>
       <div id='sett_notif'><input id='notif_cb' type='checkbox' />desktop notifications</div>

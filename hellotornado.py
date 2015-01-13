@@ -1,4 +1,5 @@
 import json
+import time
 
 import tornado.web
 import tornado.ioloop
@@ -27,12 +28,17 @@ class WSHandler(tornado.websocket.WebSocketHandler):
             if ty == 'login':
                 self.on_login(msg['user'])
             elif ty == 'sent':
-                self.on_sent(msg['text'])
+                self.on_sent(msg)
         except Exception as e:
             print 'WSHandler.on_message error: ' + str(e)
 
-    def on_sent(self, text):
-        msg = json.dumps({ 'type': 'recv', 'from': self.user, 'text': text })
+    def on_sent(self, msg):
+        msg = json.dumps({
+            'type': 'recv',
+            'from': self.user,
+            'time': msg.get('time', int(time.time())),
+            'text': msg['text']
+        })
         for user, ws in sessions.iteritems():
             if self.user != user:
                 ws.write_message(msg)
