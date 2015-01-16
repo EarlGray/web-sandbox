@@ -1,0 +1,121 @@
+.darkbg {
+  background-color: #e8e9e8 ;
+}
+.loginwidth {
+  width: 10%;
+  min-width: 10em;
+  margin: 0.2em;
+}
+#login {
+  padding: 2em;
+  margin: 0 auto;
+  text-align: center;
+  max-width: 800px;
+  min-width: 400px;
+  width: 40%;
+  border-radius:0.5em;
+}
+#inplogin {
+  font-size:200%;
+  text-align:center;
+}
+#submlogin {
+  font-size: 140%;
+  background-color: #c0ffc0;
+  border-radius: 1em;
+}
+#loginfail {
+  margin: 0 auto;
+  color: red;
+  font-weight: bold;
+  text-align: center;
+}
+
+#chat {
+  margin: 0 auto;
+  display: none;
+  max-width: 1000px;
+  min-width: 400px;
+  font-family: 'Noto Sans', 'PT Sans', sans-serif;
+  font-size: 11pt;
+  border-radius: 10px;
+}
+
+/* .brd { border: 1px dashed blue; } */
+.content { background-color: white; }
+
+#hist {
+    width: 70%;
+    float: left;
+    display: block-inline;
+    margin: 0.5em;
+}
+
+#hist {
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+#ulhist tr {
+    max-height: 1em;
+}
+
+.histtime {
+    color: #8a9;
+}
+.histuser {
+    color: blue;
+    width: 5em;
+    text-align: right;
+    background-color: #f8f8ff;
+    padding: 0.2em 0.5em 0.1em 0.2em;
+    margin-right: 0.5em;
+}
+.histmsg {
+    text-decoration: italic;
+    padding: 0 0 0 1em;
+}
+
+#roster {
+    width: 25%;
+    height: 80%;
+    margin: 0.5em 0 0 0;
+    float: left;
+    display: block-inline;
+}
+#rstr {
+    width: 100%;
+    margin: 0.5em;
+}
+.rstrth {
+    /*border: 1px solid #ccc;*/
+}
+.rstrtd {
+    padding-left: 1.5em;
+}
+#settings {
+    margin: 2em 0.5em 0 0.5em;
+}
+#sett_cap {
+    font-weight: bold;
+    text-align: center;
+}
+
+#message {
+    clear: both;
+}
+#msg {
+    margin: 0.5em;
+    width: 70%;
+    height: 2em;
+    font-size: 12pt;
+    font-family: 'Noto Sans', sans;
+}
+
+.msginfo {
+    font-style: italic;
+    color: #999;
+}
+.msgerr {
+    font-weight: bold;
+    color: red;
+}

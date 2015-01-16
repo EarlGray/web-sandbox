@@ -8,9 +8,13 @@ import tornado.websocket
 
 sessions = dict()
 
-class MainHandler(tornado.web.RequestHandler):
+class FileHandler(tornado.web.RequestHandler):
+    filemap = { '/'         : 'index.htm' }
+
     def get(self):
-        self.render('index.htm')
+        fname = self.filemap.get(self.request.uri, '404.htm')
+        print('%s <= index.htm' % self.request.remote_ip)
+        self.render(fname)
 
 class WSHandler(tornado.websocket.WebSocketHandler):
     sent_ok = json.dumps({'type': 'sent', 'status': 'ok'})
@@ -18,11 +22,11 @@ class WSHandler(tornado.websocket.WebSocketHandler):
 
     def open(self):
         self.ip = self.request.remote_ip
-        print('WSHandler.open() <= %s' % self.ip)
+        print('%s <= ws.open()' % self.ip)
 
     def on_message(self, message):
         try:
-            print 'WSHandler<%s>.on_message(%s)' % (self.ip, message)
+            print '%s => %s' % (self.ip, message)
             msg = json.loads(message)
             ty = msg['type']
             if ty == 'login':
@@ -30,7 +34,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
             elif ty == 'sent':
                 self.on_sent(msg)
         except Exception as e:
-            print 'WSHandler.on_message error: ' + str(e)
+            print 'ws.on_message error: ' + str(e)
 
     def on_sent(self, msg):
         msg = json.dumps({
@@ -69,7 +73,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
             self.write_message(self.login_ok)
 
     def on_close(self):
-        print 'WSHandler<%s>: connection closed' % self.ip
+        print '%s => ws.on_close' % self.ip
         if not hasattr(self, 'user'):
             print 'self.on_close() with no self.user'
             return
@@ -83,9 +87,9 @@ class WSHandler(tornado.websocket.WebSocketHandler):
 
 
 application = tornado.web.Application([
-    #(r'/', tornado.web.StaticFileHandler, {'path': 'index.htm' }),
-    (r'/',   MainHandler),
-    (r'/ws', WSHandler),
+    (r'/',         FileHandler),
+    (r'/ws',       WSHandler),
+    (r'/(.*)',     tornado.web.StaticFileHandler, {'path': '.' }),
 ])
 
 if __name__ == '__main__':
