@@ -1,3 +1,4 @@
+
 function WSProtocol(user, wsurl, action) {
     var ws = new WebSocket(wsurl);
     var send = function(data) { ws.send(JSON.stringify(data)); }; 
@@ -41,21 +42,46 @@ function ChatNotifications() {
         return;
     }
 
+    const notif_cookie = 'settings.desktop_notifications';
+    var focused = true;
+    var enabled = true;
+
+    if ($.cookie) {
+        $.cookie.json = true; 
+        var state = $.cookie(notif_cookie);
+        if (state !== undefined)
+            enabled = state;
+    }
+
     if (Notification.permission !== 'granted') {
         Notification.requestPermission();
     }
 
-    var focused = true;
-    var enabled = true;
+    var mail_url = (function () {
+        var sb = $('#smilebtn');
+        var saveclass = sb.attr('class');
+        sb.attr('class', 'mail');
+        var bgimg = sb.css('background-image'); 
+        sb.attr('class', saveclass);
+        var url = bgimg.replace(/url\(['"]?/, '').replace(/['"]?\)$/, '');
+        //console.log('mail_url = ' + url);
+        return url;
+    })();
 
     return {
         'gotFocus': function () { focused = true; },
         'lostFocus': function () { focused = false; },
-        'enabled': function (status) { enabled = status; },
+        'enabled': function (status) { 
+            if (status === undefined) return enabled;
+            if ($.cookie) $.cookie(notif_cookie, status);
+            enabled = status; 
+        },
         'status': function () { return Notification.permission; },
         'notify': function (who, text) {
             if (!enabled || focused) return;
-            new Notification('New message from ' + who, { 'body': text });
+            var title = 'New message from ' + who; 
+            var params = { 'body': text, 'icon': mail_url };
+            new Notification(title, params);
         },
     };
 }
@@ -71,31 +97,98 @@ function histTimeFormat(date) {
 }
 
 const smiles = [
-    { re: /:\)/, style: 'smile' },
-    { re: /:\(/, style: 'sad'   },
-    { re: /:D/,  style: 'rofl'  },
-    { re: /:P/,  style: 'teese' },
-    { re: /:X/,  style: 'sealed' },
-    { re: /:O/,  style: 'shocked' },
-    { re: /:O/,  style: 'shocked' },
-    { re: /;\(/, style: 'cry' },
-    { re: /:]/,  style: 'blush' },
-    { re: /:\|/, style: 'speechless' },
-    { re: /\*bye\*/,    style: 'bye' },
-    { re: /\*tea\*/,    style: 'tea' },
-    { re: /\*sleepy\*/, style: 'sleepy' },
-    { re: /\*idea\*/,   style: 'idea' },
-    { re: /\*music\*/,  style: 'music' },
-    { re: /\*puke\*/,   style: 'puke' },
-    { re: /\*angel\*/,  style: 'angel' },
-    { re: /\*sunny\*/,  style: 'sunny' },
-    { re: /\*sick\*/,   style: 'sick' },
+    { re: /:\)/, style: 'smile', text: ':)' },
+    { re: /:\(/, style: 'sad',   text: ':(' },
+    { re: /:D/,  style: 'rofl',  text: ':D' },
+    { re: /:P/,  style: 'tease', text: ':P' },
+    { re: /:X/,  style: 'sealed',text: ':X' },
+    { re: /:O/,  style: 'shocked', text: ':O' },
+    { re: /;\(/, style: 'cry',   text: ';(' },
+    { re: /:]/,  style: 'blush', text: ':]' },
+    { re: /:\|/, style: 'speechless', text: ':|' },
+    { re: /:\*/,        style: 'kiss', text: ':*' },
+    { re: /B\)/,        style: 'cool', text: 'B)' },
+    { re: /\*bye\*/,    style: 'bye',  text: '*bye*' },
+    { re: /\*hi\*/,     style: 'bye',  text: '*hi*' },
+    { re: /\*tea\*/,    style: 'tea',  text: '*tea*' },
+    { re: /\*crazy\*/,  style: 'crazy', text: '*crazy*' },
+    { re: /\*mail\*/,   style: 'mail', text: '*mail*' },
+    { re: /\*sleepy\*/, style: 'sleepy', text: '*sleepy*' },
+    { re: /\*nerdy\*/,  style: 'nerdy',  text: '*nerdy*' },
+    { re: /\*phone\*/,  style: 'phone',  text: '*phone*' },
+    { re: /\*idea\*/,   style: 'idea',   text: '*idea*' },
+    { re: /\*music\*/,  style: 'music',  text: '*music*' },
+    { re: /\*lips\*/,   style: 'lips',   text: '*lips*' },
+    { re: /\*puke\*/,   style: 'puke',   text: '*puke*' },
+    { re: /\*angel\*/,  style: 'angel',  text: '*angel*' },
+    { re: /\*sunny\*/,  style: 'sunny',  text: '*sunny*' },
+    { re: /\*sick\*/,   style: 'sick',  text: '*sick*' },
 ];
+function smileTextByStyle(classes) {
+    for (var i = 0; i < smiles.length; ++i) {
+        if (classes.indexOf(smiles[i].style) > -1)
+            return smiles[i].text;
+    }
+    return null;
+}
+
+function initSmileTable() {
+    var btn = $('#smilebtn');
+    var tbl = $('#smiletbl');
+
+    var tblClose = function () {
+        tbl.hide();
+        $('#msg').focus();
+    };
+    var tblShow = function () {
+        var btnpos = btn.offset();
+        var pos = {
+            top: Math.floor(btnpos.top - tbl.height()), 
+            left: Math.floor(btnpos.left),
+        };
+        tbl.show();
+        tbl.offset(pos);
+        tbl.focus();
+    };
+    var tblClick = function(clss) {
+        var smtxt = smileTextByStyle(clss);
+
+        var msg = $('#msg');
+        var cursorpos = msg[0].selectionStart;
+        var s = msg.val();
+        msg.val( s.slice(0, cursorpos) + smtxt + s.slice(cursorpos) );
+        cursorpos += smtxt.length;
+        msg[0].setSelectionRange(cursorpos, cursorpos);
+    };
+
+    tbl[0].style.display = 'none';
+
+    $('#smiletbl tbody tr td').each(function() {
+        var clss = $(this).attr('class').split(' ')[0];
+        $(this).click(function () { tblClick(clss); });
+    });
+
+    btn.click(function() {
+        if (tbl[0].style.display == 'none') tblShow();
+        else tblClose();
+    });
+    return { 'show' : tblShow, 'hide': tblClose };
+}
 
 function prepareMessage(text) {
     if (typeof(text) != 'string') return text;
-    console.log('text = ' + text);
 
+    /* handle commands */
+    switch (text.split(' ')[0]) {
+      case '/clear':
+          $('#ulhist').empty();
+          return null;
+      case '/help':
+          appendInfo('/help:<br/>/clear - clear the chat window');
+          return null;
+    }
+
+    /* handle smiles */
     for (var i = 0; i < smiles.length; ++i) {
         var smile = smiles[i];
         text = text.replace(smile.re, '<div class="' + smile.style + ' smiley"></div>');
@@ -105,6 +198,8 @@ function prepareMessage(text) {
 
 function appendMessage(sender, text, time) {
     var txt = prepareMessage(text);
+    if (txt === null) return;
+
     var row = $('<tr/>');
     row.append($('<td/>').attr('class', 'histtime').append(histTimeFormat(new Date(time))));
     row.append($('<td/>').attr('class', 'histuser').append(sender));
@@ -115,7 +210,7 @@ function appendMessage(sender, text, time) {
     histdiv.scrollTop(histdiv[0].scrollHeight);
 }
 function appendInfo(msg) {
-    appendMessage('', $('<span/>').attr('class', 'msginfo').text(msg), Date.now());
+    appendMessage('', $('<span/>').attr('class', 'msginfo').append(msg), Date.now());
 }
 function appendError(err) {
     appendMessage('', $('<span/>').attr('class', 'msgerr').text(err), Date.now());
@@ -219,15 +314,17 @@ function onLogin(msg) {
 
     if ($('#chat').css('display') == 'none') {
         // we came from login screen:
+        initNotifs();
+        initSmileTable();
+
         $('#login').hide();
         $('#chat').show();
+        $('#notif_cb')[0].checked = notifs.enabled();
 
         adjustHeight();
-        $(window).resize(function (ev) { adjustHeight();     });
+        $(window).resize(function (ev) { adjustHeight(); });
 
         rstrHeader();
-
-        initNotifs();
     }
 
     userJoined(user);
@@ -235,7 +332,9 @@ function onLogin(msg) {
     var msg = $('#msg');
     msg.off('keyup');
     msg.on('keyup', function (ev) {
-        if (ev.which == 13) {
+        if (ev.which == 13 && !ev.shiftKey) {
+            if (msg.val().trim().length == 0) return;
+
             var m = { 'type': 'sent', 'time': Date.now(), 'text': msg.val() };
             wsconn.send(m);
             appendMessage(user, m.text, m.time);

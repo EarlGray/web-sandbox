@@ -1,5 +1,6 @@
 import json
 import time
+import os.path
 
 import tornado.web
 import tornado.ioloop
@@ -9,11 +10,22 @@ import tornado.websocket
 sessions = dict()
 
 class FileHandler(tornado.web.RequestHandler):
-    filemap = { '/'         : 'index.htm' }
+    filemap = { '' : 'index.htm' }
 
-    def get(self):
-        fname = self.filemap.get(self.request.uri, '404.htm')
-        print('%s <= index.htm' % self.request.remote_ip)
+    def get(self, reqpath):
+        remote_ip = self.request.remote_ip
+
+        fname = self.filemap.get(reqpath, reqpath)
+        if not os.path.exists(fname):
+            print('%s <= 404 (%s)' % (remote_ip, reqpath))
+            self.write('404');
+            return
+
+        print('%s: %s <= %s' % (remote_ip, self.request.uri, fname))
+
+        contenttype = {'css': 'text/css', 'js': 'text/javascript'}.get(fname.split('.')[-1])
+        if contenttype: self.set_header('Content-Type', contenttype)
+
         self.render(fname)
 
 class WSHandler(tornado.websocket.WebSocketHandler):
@@ -87,9 +99,10 @@ class WSHandler(tornado.websocket.WebSocketHandler):
 
 
 application = tornado.web.Application([
-    (r'/',         FileHandler),
+    #(r'/',         FileHandler),
     (r'/ws',       WSHandler),
-    (r'/(.*)',     tornado.web.StaticFileHandler, {'path': '.' }),
+    (r'/(.*)',     FileHandler),
+    #(r'/(.*)',     tornado.web.StaticFileHandler, {'path': '.' }),
 ])
 
 if __name__ == '__main__':

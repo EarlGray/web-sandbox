@@ -36,6 +36,7 @@
   display: none;
   max-width: 1000px;
   min-width: 400px;
+  min-height: 6em;
   font-family: 'Noto Sans', 'PT Sans', sans-serif;
   font-size: 11pt;
   border-radius: 10px;
@@ -54,6 +55,7 @@
 #hist {
     overflow-y: scroll;
     overflow-x: hidden;
+    min-height: 200px;
 }
 #ulhist tr {
     max-height: 1em;
@@ -61,6 +63,7 @@
 
 .histtime {
     color: #8a9;
+    font-size: 10pt;
 }
 .histuser {
     color: blue;
@@ -78,22 +81,26 @@
 #roster {
     width: 25%;
     height: 80%;
-    margin: 0.5em 0 0 0;
+    margin: 0.5em;
     float: left;
     display: block-inline;
 }
 #rstr {
     width: 100%;
-    margin: 0.5em;
+    /*margin: 0.5em;*/
 }
 .rstrth {
     /*border: 1px solid #ccc;*/
 }
 .rstrtd {
     padding-left: 1.5em;
+    border-bottom: 1px solid #c0c0c0;
+}
+.rstrtd:last {
+    padding-bottom: 1em;
 }
 #settings {
-    margin: 2em 0.5em 0 0.5em;
+    margin: 1em 0.0 0 0;
 }
 #sett_cap {
     font-weight: bold;
@@ -102,13 +109,38 @@
 
 #message {
     clear: both;
+    padding: 0 0.5em 0.5em 0.5em;
+    width: 69%;
+    height: 40px;
 }
 #msg {
-    margin: 0.5em;
-    width: 70%;
-    height: 2em;
     font-size: 12pt;
     font-family: 'Noto Sans', sans;
+    width: 90%;
+    height: 29px;
+
+    float: left;
+    display: inline-block;
+}
+#smilebtn {
+    width: 40px;
+    height: 35px;
+    margin-left: 1em;
+
+    background-color: white;
+    background-repeat: no-repeat;
+
+    float: left;
+    display: inline-block;
+}
+#smiletbl {
+    display: none;
+    position: absolute;
+    margin: 0.5em;
+    background-color: #333;
+}
+#smiletbl tbody tr td {
+    margin-right: 1px;
 }
 
 .msginfo {

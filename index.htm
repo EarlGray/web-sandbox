@@ -8,7 +8,8 @@
 <link rel='stylesheet' type='text/css' href='chat.css' />
 <link rel='stylesheet' type='text/css' href='smiley.css' />
 
-<script src="http://code.jquery.com/jquery.min.js"></script>
+<script src="//code.jquery.com/jquery.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js"></script>
 <script src="chat.js"></script>
 <script>
 $(document).ready(function () {
@@ -53,6 +54,26 @@ $(document).ready(function () {
   </div>
   <div id='message' class='brd'>
     <input type='text' id='msg' />
+    <input type='button' id='smilebtn' class='smile' />
+    <div id='smiletbl'>
+      <table>
+          <tr><td class='angel smiley'></td> <td class='blush smiley'></td> 
+              <td class='bye smiley'></td> <td class='cool smiley'></td>
+              <td class='crazy smiley'></td> </tr>
+          <tr><td class='cry smiley'></td> <td class='idea smiley'></td>
+              <td class='kiss smiley'></td> <td class='lips smiley'></td>
+              <td class='mail smiley'></td> </tr>
+          <tr><td class='music smiley'></td> <td class='nerdy smiley'></td>
+              <td class='phone smiley'></td> <td class='puke smiley'></td>
+              <td class='rofl smiley'></td> </tr>
+          <tr><td class='sad smiley'></td> <td class='sealed smiley'></td>
+              <td class='shocked smiley'></td> <td class='sick smiley'></td>
+              <td class='sleepy smiley'></td> </tr>
+          <tr><td class='smile smiley'></td> <td class='speechless smiley'></td>
+              <td class='sunny smiley'></td> <td class='tea smiley'></td>
+              <td class='tease smiley'></td> </tr>
+      </table>
+    </div>
   </div>
 </div>
 </body>
