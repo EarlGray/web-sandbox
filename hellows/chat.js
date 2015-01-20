@@ -1,7 +1,7 @@
 
 function WSProtocol(user, wsurl, action) {
     var ws = new WebSocket(wsurl);
-    var send = function(data) { ws.send(JSON.stringify(data)); }; 
+    var send = function(data) { ws.send(JSON.stringify(data)); };
 
     ws.onopen = function () {
         console.log('ws.onopen()');
@@ -23,7 +23,7 @@ function WSProtocol(user, wsurl, action) {
             else action.login_failed(msg.reason);
             break;
           case 'recv': action.msg_received(msg); break;
-          case 'sent': action.msg_sent(msg.msgid); break;
+          case 'sent': action.msg_sent(msg); break;
           case 'join': action.user_joined(msg.user); break;
           case 'exit': action.user_quit(msg.user); break;
           default: action.unknown(ev.data);
@@ -47,7 +47,7 @@ function ChatNotifications() {
     var enabled = true;
 
     if ($.cookie) {
-        $.cookie.json = true; 
+        $.cookie.json = true;
         var state = $.cookie(notif_cookie);
         if (state !== undefined)
             enabled = state;
@@ -61,7 +61,7 @@ function ChatNotifications() {
         var sb = $('#smilebtn');
         var saveclass = sb.attr('class');
         sb.attr('class', 'mail');
-        var bgimg = sb.css('background-image'); 
+        var bgimg = sb.css('background-image');
         sb.attr('class', saveclass);
         var url = bgimg.replace(/url\(['"]?/, '').replace(/['"]?\)$/, '');
         //console.log('mail_url = ' + url);
@@ -71,15 +71,15 @@ function ChatNotifications() {
     return {
         'gotFocus': function () { focused = true; },
         'lostFocus': function () { focused = false; },
-        'enabled': function (status) { 
+        'enabled': function (status) {
             if (status === undefined) return enabled;
             if ($.cookie) $.cookie(notif_cookie, status);
-            enabled = status; 
+            enabled = status;
         },
         'status': function () { return Notification.permission; },
         'notify': function (who, text) {
             if (!enabled || focused) return;
-            var title = 'New message from ' + who; 
+            var title = 'New message from ' + who;
             var params = { 'body': text, 'icon': mail_url };
             new Notification(title, params);
         },
@@ -143,12 +143,12 @@ function initSmileTable() {
     var tblShow = function () {
         var btnpos = btn.offset();
         var pos = {
-            top: Math.floor(btnpos.top - tbl.height()), 
-            left: Math.floor(btnpos.left),
+            top: Math.floor(btnpos.top + btn.height() - tbl.height()),
+            left: Math.floor(btnpos.left + btn.outerWidth() + 5),
         };
         tbl.show();
         tbl.offset(pos);
-        tbl.focus();
+        $('#msg').focus();
     };
     var tblClick = function(clss) {
         var smtxt = smileTextByStyle(clss);
@@ -200,8 +200,12 @@ function appendMessage(sender, text, time) {
     var txt = prepareMessage(text);
     if (txt === null) return;
 
-    var row = $('<tr/>');
-    row.append($('<td/>').attr('class', 'histtime').append(histTimeFormat(new Date(time))));
+    var row = $('<tr/>').attr('id', 'msg' + time);
+    if (sender == window.user)
+        row.append($('<td/>').attr('class', 'histtime').append('sending'));
+    else
+        row.append($('<td/>').attr('class', 'histtime').append(histTimeFormat(new Date(time))));
+
     row.append($('<td/>').attr('class', 'histuser').append(sender));
     row.append($('<td/>').attr('class', 'histmsg').append(txt));
     $('#ulhist').append(row);
@@ -261,8 +265,12 @@ function msgRecv(msg) {
     appendMessage(msg.from, msg.text, msg.time);
     notifs.notify(msg.from, msg.text);
 }
-function msgSent(msgid) {
-    console.log('msgSent');
+function msgSent(msg) {
+    var tr = $('#msg' + msg.time);
+    if (tr) {
+        tr.children('.histtime')[0].textContent = histTimeFormat( new Date(msg.time) );
+    } else
+        console.log('msgSent: ' + JSON.stringify(msg));
 }
 
 function onWSClosed() {
@@ -286,12 +294,12 @@ function onWSClosed() {
     }
 
     // try to reconnect:
-    setTimeout(function () { 
+    setTimeout(function () {
         wsconn = initWS(user);
     }, 5000);
 }
 function onWSError(err) {
-    //console.log('onWSError');
+    console.log('onWSError');
 }
 
 function initNotifs() {
@@ -355,7 +363,7 @@ function initWS(user) {
     console.log('connecting to ' + url + '...');
     return WSProtocol(user, url, {
         'login_ok': onLogin,
-        'login_failed': onFailedLogin, 
+        'login_failed': onFailedLogin,
 
         'msg_received': msgRecv,
         'msg_sent': msgSent,

@@ -29,12 +29,13 @@ class FileHandler(tornado.web.RequestHandler):
         self.render(fname)
 
 class WSHandler(tornado.websocket.WebSocketHandler):
-    sent_ok = json.dumps({'type': 'sent', 'status': 'ok'})
-    login_ok = json.dumps({'type': 'login', 'status': 'ok'})
 
     def open(self):
         self.ip = self.request.remote_ip
         print('%s <= ws.open()' % self.ip)
+
+    def send_json(self, msg):
+        self.write_message(json.dumps(msg))
 
     def on_message(self, message):
         try:
@@ -49,24 +50,25 @@ class WSHandler(tornado.websocket.WebSocketHandler):
             print 'ws.on_message error: ' + str(e)
 
     def on_sent(self, msg):
-        msg = json.dumps({
+        msg = {
             'type': 'recv',
             'from': self.user,
-            'time': msg.get('time', int(time.time())),
+            'time': msg.get('time', int(time.time() * 1000)),
             'text': msg['text']
-        })
+        }
         for user, ws in sessions.iteritems():
             if self.user != user:
-                ws.write_message(msg)
+                ws.send_json(msg)
 
-        self.write_message(self.sent_ok)
+        self.send_json({'type': 'sent', 'status': 'ok', 'time': msg['time']})
+
 
     def on_login(self, user):
         if sessions.has_key(user):
             msg = { 'type': 'login',
                     'status': 'failed',
                     'reason': 'user %s already signed in' % user }
-            self.write_message(json.dumps(msg))
+            self.send_json(msg)
             print msg
         else:
             self.user = user
@@ -75,26 +77,24 @@ class WSHandler(tornado.websocket.WebSocketHandler):
             for user, ws in sessions.iteritems():
                 if user != self.user:
                     # send 'joined': user to me
-                    presentmsg = json.dumps({'type': 'join', 'user': user})
-                    self.write_message(presentmsg)
+                    self.send_json({'type': 'join', 'user': user})
                     # send 'joined': me to user
-                    joinmsg = json.dumps({'type': 'join', 'user': self.user})
-                    ws.write_message(joinmsg)
+                    ws.send_json({'type': 'join', 'user': self.user})
 
             sessions[self.user] = self
-            self.write_message(self.login_ok)
+            self.send_json({'type': 'login', 'status': 'ok'})
 
     def on_close(self):
-        print '%s => ws.on_close' % self.ip
         if not hasattr(self, 'user'):
-            print 'self.on_close() with no self.user'
+            print '%s => ws.on_close (no session)' % self.ip
             return
 
+        print '%s => ws.on_close(user=%s)' % (self.ip, self.user)
         sessions.pop(self.user)
 
-        exitmsg = json.dumps({'type': 'exit', 'user': self.user})
+        exitmsg = {'type': 'exit', 'user': self.user}
         for ws in sessions.values():
-            ws.write_message(exitmsg)
+            ws.send_json(exitmsg)
 
 
 

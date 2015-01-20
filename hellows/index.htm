@@ -23,6 +23,8 @@ $(document).ready(function () {
         e.preventDefault();
 
         user = $('#inplogin').val();
+        if (user.length == 0) return;
+
         wsconn = initWS(user);
     });
 });
