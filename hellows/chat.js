@@ -1,10 +1,14 @@
 
 function WSProtocol(user, wsurl, action) {
     var ws = new WebSocket(wsurl);
-    var send = function(data) { ws.send(JSON.stringify(data)); };
+    ws.id = Date.now() % 1000000;
+    var send = function(data) {
+        console.log('ws<' + ws.id + '>.send(' + JSON.stringify(data) + ')');
+        ws.send(JSON.stringify(data));
+    };
 
     ws.onopen = function () {
-        console.log('ws.onopen()');
+        console.log('ws<' + ws.id + '>.onopen()');
         send({'type': 'login', 'user': user});
     };
     ws.onclose = function (ev) {
@@ -132,6 +136,27 @@ function smileTextByStyle(classes) {
     return null;
 }
 
+function populateSmileTable() {
+    /* get smile set */
+    var _smiles = smiles.map(function (item) { return item.style; }).sort();
+    var _smileset = [];
+    while (_smiles.length) {
+        var s = _smiles.pop();
+        if (_smileset[0] !== s) _smileset.unshift(s);
+    }
+
+    /* populate smile table */
+    var tbl = $('#smiletbl table');
+    while (_smileset.length) {
+        var tr = $('<tr/>');     // 5 items per row
+        for (var i = 0; i < 5; ++i) {
+            if (_smileset.length > 0)
+                tr.append($('<td/>').attr('class', _smileset.shift() + ' smiley'));
+        }
+        tbl.append(tr);
+    }
+}
+
 function initSmileTable() {
     var btn = $('#smilebtn');
     var tbl = $('#smiletbl');
@@ -163,7 +188,8 @@ function initSmileTable() {
 
     tbl[0].style.display = 'none';
 
-    $('#smiletbl tbody tr td').each(function() {
+    populateSmileTable();
+    $('#smiletbl td').each(function() {
         var clss = $(this).attr('class').split(' ')[0];
         $(this).click(function () { tblClick(clss); });
     });
@@ -198,7 +224,7 @@ function prepareMessage(text) {
 
 function appendMessage(sender, text, time) {
     var txt = prepareMessage(text);
-    if (txt === null) return;
+    if (txt === null) return false; // do not send
 
     var row = $('<tr/>').attr('id', 'msg' + time);
     if (sender == window.user)
@@ -212,6 +238,7 @@ function appendMessage(sender, text, time) {
 
     var histdiv = $('#hist');
     histdiv.scrollTop(histdiv[0].scrollHeight);
+    return true;
 }
 function appendInfo(msg) {
     appendMessage('', $('<span/>').attr('class', 'msginfo').append(msg), Date.now());
@@ -255,13 +282,13 @@ function rstrClear() {
 }
 
 function userQuit(user) {
-    console.log(user + ' quit');
+    console.log('ws<' + wsconn.ws.id + '>: ' + user + ' quit');
     rstrQuit(user);
     appendInfo('' + user + ' quit');
 }
 
 function msgRecv(msg) {
-    console.log('msgRecv(' + JSON.stringify(msg) + ')');
+    console.log('ws<' + wsconn.ws.id + '>: ' + 'msgRecv(' + JSON.stringify(msg) + ')');
     appendMessage(msg.from, msg.text, msg.time);
     notifs.notify(msg.from, msg.text);
 }
@@ -270,11 +297,11 @@ function msgSent(msg) {
     if (tr) {
         tr.children('.histtime')[0].textContent = histTimeFormat( new Date(msg.time) );
     } else
-        console.log('msgSent: ' + JSON.stringify(msg));
+        console.log('ws<' + wsconn.ws.id + '>: msgSent: ' + JSON.stringify(msg));
 }
 
 function onWSClosed() {
-    console.log('onWSClosed');
+    console.log('ws<' + wsconn.ws.id + '>: onWSClosed');
 
     if (online) {
         online = false;
@@ -299,7 +326,7 @@ function onWSClosed() {
     }, 5000);
 }
 function onWSError(err) {
-    console.log('onWSError');
+    console.log('ws<' + wsconn.ws.id + '>: onWSError');
 }
 
 function initNotifs() {
@@ -344,8 +371,8 @@ function onLogin(msg) {
             if (msg.val().trim().length == 0) return;
 
             var m = { 'type': 'sent', 'time': Date.now(), 'text': msg.val() };
-            wsconn.send(m);
-            appendMessage(user, m.text, m.time);
+            if (appendMessage(user, m.text, m.time))
+                wsconn.send(m);
             msg.val('');
         }
     });
@@ -354,7 +381,7 @@ function onLogin(msg) {
 }
 
 function onFailedLogin(err) {
-    console.log('login failed');
+    console.log('ws<' + wsconn.ws.id + '>: login failed');
     $('#loginfail').text('Login failed: ' + err);
 }
 
@@ -371,7 +398,7 @@ function initWS(user) {
         'user_joined': userJoined,
         'user_quit': userQuit,
 
-        'unknown': function (data) { console.log('unknown message: ' + data); },
+        'unknown': function (data) { console.log('ws<' + wsconn.ws.id + '>: unknown message: ' + data); },
         'ws_error': onWSError,
         'ws_closed': onWSClosed,
     });
@@ -390,5 +417,6 @@ function userFromQuery() {
     }
     return null;
 }
+
 function reloadPage () { window.location = window.location.origin + '?user=' + user; }
 

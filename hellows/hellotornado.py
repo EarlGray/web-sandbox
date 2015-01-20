@@ -1,6 +1,7 @@
 import json
 import time
 import os.path
+import signal
 
 import tornado.web
 import tornado.ioloop
@@ -96,7 +97,12 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         for ws in sessions.values():
             ws.send_json(exitmsg)
 
+def sigusr1(a, b):
+    print "=========== sesssions: "
+    for user, ws in sessions.iteritems():
+        print('%s : %s' % (user, ws.ip))
 
+    print
 
 application = tornado.web.Application([
     #(r'/',         FileHandler),
@@ -106,6 +112,8 @@ application = tornado.web.Application([
 ])
 
 if __name__ == '__main__':
+    signal.signal(signal.SIGUSR1, sigusr1)
+
     http_server = tornado.httpserver.HTTPServer(application)
     http_server.listen(8888);
     tornado.ioloop.IOLoop.instance().start()
