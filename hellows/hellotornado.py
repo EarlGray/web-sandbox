@@ -60,9 +60,11 @@ class WSHandler(tornado.websocket.WebSocketHandler):
             msg = json.loads(message)
             ty = msg['type']
             if   ty == 'login': self.on_login(msg['user'])
-            elif ty == 'sent': self.on_sent(msg)
             elif ty == 'ping': self.write_message({'type': 'pong'})
             elif ty == 'pong': pass
+            elif ty == 'sent':
+                print '%02d | <= %s' % (self.id, message)
+                self.on_sent(msg)
         except Exception as e:
             print '%02d | ws.on_message error: %s' % (self.id, str(e))
 
@@ -87,8 +89,6 @@ class WSHandler(tornado.websocket.WebSocketHandler):
                 ws.send_json(msg)
 
         self.send_json({'type': 'sent', 'status': 'ok', 'time': msg['time']})
-        print '%02d | <= %s' % (self.id, json.dumps(msg))
-
 
     def on_login(self, user):
         already_logged_in = sessions.has_key(user)
@@ -113,7 +113,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
                 # send 'joined': me to user
                 if not already_logged_in:
                     ws.send_json({'type': 'join', 'user': self.user})
- 
+
         sessions[self.user] = self
         self.send_json({'type': 'login', 'status': 'ok'})
         print '%02d | logged in: %s' % (self.id, self.user)

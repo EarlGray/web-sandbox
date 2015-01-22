@@ -52,9 +52,13 @@ function WSProtocol(user, wsurl, action) {
 }
 
 function ChatNotifications() {
-    if (!Notification) {
+    if (!window.Notification) {
         console.log('Warning: Notifications not available');
-        return;
+        var empty = function () {};
+        return {
+            'gotFocus': empty, 'lostFocus': empty, 'notify': empty,
+            'enabled': function () { return false; }, 'status': function () { return 'n/a'; },
+        };
     }
 
     const notif_cookie = 'settings.desktop_notifications';
@@ -90,8 +94,12 @@ function ChatNotifications() {
             if ($.cookie) $.cookie(notif_cookie, status);
             enabled = status;
         },
-        'status': function () { return Notification.permission; },
+        'status': function () {
+            //if (!Notification) return null;
+            return Notification.permission;
+        },
         'notify': function (who, text) {
+            //if (!Notification) return;
             if (!enabled || focused) return;
             var title = 'New message from ' + who;
             var params = { 'body': text, 'icon': mail_url };
@@ -414,7 +422,7 @@ function onLogin(msg) {
 }
 
 function onFailedLogin(err) {
-    console.log('ws<' + wsconn.ws.id + '>: login failed');
+    console.log('ws<' + wsconn.ws.id + '>: login failed: ' + err);
     $('#loginfail').text('Login failed: ' + err);
     wsconn.ws.close();
 }
@@ -463,6 +471,7 @@ function initChat(username) {
             console.log('server online');
         },
         'on_sleep': function () {
+            console.log('server connection lost, reconnecting...');
             wsconn.ws.close();
         }
     });
