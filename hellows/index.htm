@@ -12,23 +12,7 @@
 <script src="//cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js"></script>
 <script src="chat.js"></script>
 <script>
-$(document).ready(function () {
-    var quser = userFromQuery();
-    if (quser !== null) {
-        user = quser;
-        wsconn = initWS(user);
-        return;
-    }
-
-    $('#loginform').on('submit', function (e) {
-        e.preventDefault();
-
-        user = $('#inplogin').val();
-        if (user.length == 0) return;
-
-        wsconn = initWS(user);
-    });
-});
+$(document).ready(initPage);
 </script>
 </head>
 <body>

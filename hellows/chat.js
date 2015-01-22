@@ -1,9 +1,15 @@
+// Global state
+var wsconn;
+var user;
+var notifs;
+var online = false;
+var watchdog;
 
 function WSProtocol(user, wsurl, action) {
     var ws = new WebSocket(wsurl);
     ws.id = Date.now() % 1000000;
     var send = function(data) {
-        console.log('ws<' + ws.id + '>.send(' + JSON.stringify(data) + ')');
+        //console.log('ws<' + ws.id + '>.send(' + JSON.stringify(data) + ')');
         ws.send(JSON.stringify(data));
     };
 
@@ -20,6 +26,9 @@ function WSProtocol(user, wsurl, action) {
         ws.close();
     };
     ws.onmessage = function (ev) {
+        //console.log('ws<' + ws.id + '>.on_message: ' + ev.data);
+        watchdog.on_server_activity();
+
         var msg = JSON.parse(ev.data);
         switch (msg.type) {
           case 'login':
@@ -30,6 +39,8 @@ function WSProtocol(user, wsurl, action) {
           case 'sent': action.msg_sent(msg); break;
           case 'join': action.user_joined(msg.user); break;
           case 'exit': action.user_quit(msg.user); break;
+          case 'ping': send({'type': 'pong'}); break;
+          case 'pong': /* console.log('ws<' + ws.id + '>: pong()'); */ break;
           default: action.unknown(ev.data);
         }
     };
@@ -68,7 +79,6 @@ function ChatNotifications() {
         var bgimg = sb.css('background-image');
         sb.attr('class', saveclass);
         var url = bgimg.replace(/url\(['"]?/, '').replace(/['"]?\)$/, '');
-        //console.log('mail_url = ' + url);
         return url;
     })();
 
@@ -89,12 +99,6 @@ function ChatNotifications() {
         },
     };
 }
-
-// Global state
-var wsconn;
-var user;
-var notifs;
-var online = false;
 
 function histTimeFormat(date) {
     return date.toTimeString().split(' ')[0];
@@ -282,13 +286,12 @@ function rstrClear() {
 }
 
 function userQuit(user) {
-    console.log('ws<' + wsconn.ws.id + '>: ' + user + ' quit');
     rstrQuit(user);
     appendInfo('' + user + ' quit');
 }
 
 function msgRecv(msg) {
-    console.log('ws<' + wsconn.ws.id + '>: ' + 'msgRecv(' + JSON.stringify(msg) + ')');
+    //console.log('ws<' + wsconn.ws.id + '>: ' + 'msgRecv(' + JSON.stringify(msg) + ')');
     appendMessage(msg.from, msg.text, msg.time);
     notifs.notify(msg.from, msg.text);
 }
@@ -329,12 +332,42 @@ function onWSError(err) {
     console.log('ws<' + wsconn.ws.id + '>: onWSError');
 }
 
+function WSWatchdog(interval, action) {
+    var active = false;
+    var waiting = false;
+
+    var poll = function () {
+        if (waiting && active) {
+            active = false;
+            if (action.on_sleep) action.on_sleep();
+        }
+        if (wsconn.ws && wsconn.ws.readyState == WebSocket.OPEN)
+            wsconn.send({'type':'ping'});
+
+        waiting = true;
+    };
+
+    setInterval(poll, interval);
+
+    return {
+        'is_server_available': function () { return active; },
+        'on_server_activity': function () {
+            waiting = false;
+            if (!active) {
+                active = true;
+                if (action.on_wakeup) action.on_wakeup();
+            }
+        },
+    };
+}
+
 function initNotifs() {
     notifs = ChatNotifications();
 
     switch (notifs.status()) {
       case 'denied':  $('#sett_notif').hide(); break;
       case 'granted': $('#notif_cb')[0].checked = true; break;
+      case 'default': $('#notif_cb')[0].checked = false; break;
     }
     $('#notif_cb').change(function () {
         notifs.enabled(this.checked);
@@ -383,6 +416,7 @@ function onLogin(msg) {
 function onFailedLogin(err) {
     console.log('ws<' + wsconn.ws.id + '>: login failed');
     $('#loginfail').text('Login failed: ' + err);
+    wsconn.ws.close();
 }
 
 function initWS(user) {
@@ -398,9 +432,12 @@ function initWS(user) {
         'user_joined': userJoined,
         'user_quit': userQuit,
 
-        'unknown': function (data) { console.log('ws<' + wsconn.ws.id + '>: unknown message: ' + data); },
         'ws_error': onWSError,
         'ws_closed': onWSClosed,
+
+        'unknown': function (data) {
+            console.log('ws<' + wsconn.ws.id + '>: unknown message: ' + data);
+        },
     });
 }
 
@@ -418,5 +455,34 @@ function userFromQuery() {
     return null;
 }
 
-function reloadPage () { window.location = window.location.origin + '?user=' + user; }
+function initChat(username) {
+    user = username;
+    wsconn = initWS(user);
+    watchdog = WSWatchdog(10000, {
+        'on_wakeup': function () {
+            console.log('server online');
+        },
+        'on_sleep': function () {
+            wsconn.ws.close();
+        }
+    });
+}
 
+function reloadPage () {
+    window.location = window.location.origin + '?user=' + user;
+}
+
+function initPage() {
+    var quser = userFromQuery();
+    if (quser !== null)
+        return initChat(quser)
+
+    $('#loginform').on('submit', function (e) {
+        e.preventDefault();
+
+        quser = $('#inplogin').val();
+        if (quser.length == 0) return;
+
+        initChat(quser);
+    });
+}

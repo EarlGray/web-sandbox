@@ -2,6 +2,7 @@ import json
 import time
 import os.path
 import signal
+from threading import Timer
 
 import tornado.web
 import tornado.ioloop
@@ -9,6 +10,7 @@ import tornado.httpserver
 import tornado.websocket
 
 sessions = dict()
+watchdog = None
 
 class FileHandler(tornado.web.RequestHandler):
     filemap = { '' : 'index.htm' }
@@ -30,25 +32,48 @@ class FileHandler(tornado.web.RequestHandler):
         self.render(fname)
 
 class WSHandler(tornado.websocket.WebSocketHandler):
+    ws_counter = 0
 
     def open(self):
+        self.active = False
+        self.waiting = False
+        self.id = WSHandler.ws_counter
+        WSHandler.ws_counter = WSHandler.ws_counter + 1
+
         self.ip = self.request.remote_ip
-        print('%s <= ws.open()' % self.ip)
+        print('%02d | ws.open() <= %s' % (self.id, self.ip))
+
+    def ping(self):
+        self.send_json({'type': 'ping'})
 
     def send_json(self, msg):
         self.write_message(json.dumps(msg))
 
     def on_message(self, message):
+        self.waiting = False
+        if not self.active:
+            # we're active now:
+            print '%02d | active' % self.id
+            self.active = True
+
         try:
-            print '%s => %s' % (self.ip, message)
             msg = json.loads(message)
             ty = msg['type']
-            if ty == 'login':
-                self.on_login(msg['user'])
-            elif ty == 'sent':
-                self.on_sent(msg)
+            if   ty == 'login': self.on_login(msg['user'])
+            elif ty == 'sent': self.on_sent(msg)
+            elif ty == 'ping': self.write_message({'type': 'pong'})
+            elif ty == 'pong': pass
         except Exception as e:
-            print 'ws.on_message error: ' + str(e)
+            print '%02d | ws.on_message error: %s' % (self.id, str(e))
+
+    def check_presence(self):
+        if self.waiting:
+            if self.active:
+                # we were active but have waited some time without response
+                print '%02d | inactive' % self.id
+                self.active = False
+
+        self.waiting = True
 
     def on_sent(self, msg):
         msg = {
@@ -62,47 +87,76 @@ class WSHandler(tornado.websocket.WebSocketHandler):
                 ws.send_json(msg)
 
         self.send_json({'type': 'sent', 'status': 'ok', 'time': msg['time']})
+        print '%02d | <= %s' % (self.id, json.dumps(msg))
 
 
     def on_login(self, user):
-        if sessions.has_key(user):
-            msg = { 'type': 'login',
-                    'status': 'failed',
-                    'reason': 'user %s already signed in' % user }
-            self.send_json(msg)
-            print msg
-        else:
-            self.user = user
+        already_logged_in = sessions.has_key(user)
+        if already_logged_in:
+            if sessions[user].active:
+                msg = { 'type': 'login',
+                        'status': 'failed',
+                        'reason': 'user %s already signed in' % user }
+                self.send_json(msg)
+                print '%02d | already logged in: %s' % (self.id, user)
+                return
+            else:
+                # replace inactive connection
+                sessions.pop(user)
 
-            users = [];
-            for user, ws in sessions.iteritems():
-                if user != self.user:
-                    # send 'joined': user to me
-                    self.send_json({'type': 'join', 'user': user})
-                    # send 'joined': me to user
+        self.user = user
+
+        for user, ws in sessions.iteritems():
+            if user != self.user:
+                # send 'joined': user to me
+                self.send_json({'type': 'join', 'user': user})
+                # send 'joined': me to user
+                if not already_logged_in:
                     ws.send_json({'type': 'join', 'user': self.user})
-
-            sessions[self.user] = self
-            self.send_json({'type': 'login', 'status': 'ok'})
+ 
+        sessions[self.user] = self
+        self.send_json({'type': 'login', 'status': 'ok'})
+        print '%02d | logged in: %s' % (self.id, self.user)
 
     def on_close(self):
         if not hasattr(self, 'user'):
-            print '%s => ws.on_close (no session)' % self.ip
+            print '%02d | ws.on_close (no session)' % self.id
             return
 
-        print '%s => ws.on_close(user=%s)' % (self.ip, self.user)
+        print '%02d | ws.on_close(user=%s)' % (self.id, self.user)
         sessions.pop(self.user)
 
         exitmsg = {'type': 'exit', 'user': self.user}
         for ws in sessions.values():
             ws.send_json(exitmsg)
 
-def sigusr1(a, b):
-    print "=========== sesssions: "
-    for user, ws in sessions.iteritems():
-        print('%s : %s' % (user, ws.ip))
 
-    print
+def status_watcher():
+    def set_interval(func, sec):
+        def _wrapper():
+            watchdog = set_interval(func, sec)
+            func()
+
+        watchdog = Timer(sec, _wrapper)
+        watchdog.setDaemon(True)
+        watchdog.start()
+
+    def ping_all():
+        #print('pingall')
+        for ws in sessions.values():
+            ws.check_presence()
+            ws.ping()
+
+    set_interval(ping_all, 10)
+
+
+def sigusr1(a, b):
+    print "===|======= sesssions ========="
+    for user, ws in sessions.iteritems():
+        print('%02d | %s : %s' % (ws.id, user, ws.ip))
+        ws.ping()
+
+    print "===|==========================="
 
 application = tornado.web.Application([
     #(r'/',         FileHandler),
@@ -113,6 +167,7 @@ application = tornado.web.Application([
 
 if __name__ == '__main__':
     signal.signal(signal.SIGUSR1, sigusr1)
+    status_watcher()
 
     http_server = tornado.httpserver.HTTPServer(application)
     http_server.listen(8888);
