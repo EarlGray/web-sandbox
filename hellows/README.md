@@ -2,6 +2,7 @@ What's this?
 ============
 
 This is a tiny websocket chat.
+
 Features:
 - emoticons;
 - desktop notifications;
@@ -19,7 +20,7 @@ or
 
     $ python wschat.py config.json
 
-Then go to [http://localhost:8888] in your browser.
+Then go to [http://localhost:8888]() in your browser.
 
 
 Format of json config
@@ -27,6 +28,7 @@ Format of json config
 
 Any field is optional:
 
+```json
     {
         /* 8888 by default */
         "port" : 8888,
@@ -37,3 +39,5 @@ Any field is optional:
             "keyfile": "/path/to/your/private.key",
         }
     }
+```
+
