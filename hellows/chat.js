@@ -428,7 +428,8 @@ function onFailedLogin(err) {
 }
 
 function initWS(user) {
-    var url = 'ws://' + window.location.host + '/ws';
+    var proto = (location.protocol == 'https:' ? 'wss' : 'ws');
+    var url = proto + '://' + window.location.host + '/ws';
     console.log('connecting to ' + url + '...');
     return WSProtocol(user, url, {
         'login_ok': onLogin,

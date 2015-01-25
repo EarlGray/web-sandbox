@@ -1,5 +1,6 @@
 import json
 import time
+import sys
 import os.path
 import signal
 from threading import Timer
@@ -159,16 +160,31 @@ def sigusr1(a, b):
     print "===|==========================="
 
 application = tornado.web.Application([
-    #(r'/',         FileHandler),
     (r'/ws',       WSHandler),
-    (r'/(.*)',     FileHandler),
-    #(r'/(.*)',     tornado.web.StaticFileHandler, {'path': '.' }),
+    (r'/(.*)',     FileHandler),    # tornado.web.StaticFileHandler, {'path': '.' }),
 ])
 
-if __name__ == '__main__':
+def parse_conf(conffile):
+    conf = open(conffile).read()
+    return json.loads(conf)
+
+def main():
     signal.signal(signal.SIGUSR1, sigusr1)
     status_watcher()
 
-    http_server = tornado.httpserver.HTTPServer(application)
-    http_server.listen(8888);
+    conf = {}
+    try:
+        conf = parse_conf(sys.argv[1])
+    except Exception as e:
+        print('Error loading config: ' + str(e))
+
+    kw = {}
+    if conf.has_key('ssl_options'):
+        kw['ssl_options'] = conf['ssl_options']
+
+    http_server = tornado.httpserver.HTTPServer(application, **kw)
+    http_server.listen(conf.get('port', 8888));
     tornado.ioloop.IOLoop.instance().start()
+
+if __name__ == '__main__':
+    main()
