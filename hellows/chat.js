@@ -263,6 +263,9 @@ function adjustHeight() {
     var histdiv = $('#hist');
     histdiv.height($(window).height() - $('#message').outerHeight() - 50);
     histdiv.scrollTop(histdiv[0].scrollHeight);
+
+    var msgw = $('#message').width() - $('#smilebtn').outerWidth() - $.em2px(1.0);
+    $('#msg').outerWidth(msgw);
 }
 
 function rstrHeader() {
@@ -483,6 +486,11 @@ function reloadPage () {
 }
 
 function initPage() {
+    $.em2px = function (em) {
+        var px_in_em = parseFloat($('body').css('font-size'));
+        return px_in_em * em;
+    };
+
     var quser = userFromQuery();
     if (quser !== null)
         return initChat(quser)
