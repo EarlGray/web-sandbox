@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<title>Camera/mic example</title>
+<script>
+function detectGetUserMedia() {
+    navigator.getUserMedia = (navigator.getUserMedia 
+        || navigator.webkitGetUserMedia 
+        || navigator.webkitGetUserMedia 
+        || navigator.mozGetUserMedia 
+        || navigator.mzGetMedia);
+    if (!navigator.getUserMedia)
+        alert('This browser does not seem to support WebRTC');
+}
+
+var rtcStreamSuccess = function (stream) {
+    console.log('streamSuccess!');
+    var video = document.querySelector('video#vout');
+    video.src = window.URL.createObjectURL(stream);
+    video.onloadedmetadata = function (e) {
+        console.log('video.onloadedmetadata( + ' + e + ')');
+        video.play();
+    };
+}
+
+var rtcStreamError = function (err) {
+    console.log('streamError: ' + err);
+}
+</script>
+</head>
+<body>
+<video id='vout'></video>
+<script>
+detectGetUserMedia();
+
+navigator.getUserMedia({ video : true, audio : true }, rtcStreamSuccess, rtcStreamError);
+</script>
+</body>
+</html>
