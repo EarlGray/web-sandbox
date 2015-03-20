@@ -31,6 +31,7 @@ Any field is optional:
 ```json
     {
         "port" : 8888,
+        "addr" : "192.168.0.0",
 
         "ssl_options": {
             "certfile": "/path/to/your/public.key",

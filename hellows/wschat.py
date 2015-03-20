@@ -17,7 +17,7 @@ class FileHandler(tornado.web.RequestHandler):
     filemap = { '' : 'index.htm' }
 
     def get(self, reqpath):
-        remote_ip = self.request.remote_ip
+        remote_ip = self.request.headers.get('X-Real-IP', self.request.remote_ip)
 
         fname = self.filemap.get(reqpath, reqpath)
         if not os.path.exists(fname):
@@ -183,7 +183,9 @@ def main():
         kw['ssl_options'] = conf['ssl_options']
 
     http_server = tornado.httpserver.HTTPServer(application, **kw)
-    http_server.listen(conf.get('port', 8888));
+    port = conf.get('port', 8888)
+    addr = conf.get('addr', '0.0.0.0')
+    http_server.listen(port, address=addr);
     tornado.ioloop.IOLoop.instance().start()
 
 if __name__ == '__main__':
