@@ -409,6 +409,8 @@ function onLogin(msg) {
     userJoined(user);
 
     var msg = $('#msg');
+    msg[0].disabled = false;
+    msg.val('');
     msg.off('keyup');
     msg.on('keyup', function (ev) {
         if (ev.which == 13 && !ev.shiftKey) {
@@ -421,7 +423,7 @@ function onLogin(msg) {
         }
     });
 
-    $('#msg').focus();
+    msg.focus();
 }
 
 function onFailedLogin(err) {
@@ -476,6 +478,9 @@ function initChat(username) {
         },
         'on_sleep': function () {
             console.log('server connection lost, reconnecting...');
+            var msg = $('#msg');
+            msg[0].disabled = true;
+            msg.val('offline');
             wsconn.ws.close();
         }
     });
