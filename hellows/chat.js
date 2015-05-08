@@ -410,6 +410,7 @@ function onLogin(msg) {
 
     var msg = $('#msg');
     msg[0].disabled = false;
+    msg.css('text-align', 'left');
     msg.val('');
     msg.off('keyup');
     msg.on('keyup', function (ev) {
@@ -480,6 +481,7 @@ function initChat(username) {
             console.log('server connection lost, reconnecting...');
             var msg = $('#msg');
             msg[0].disabled = true;
+            msg.css('text-align', 'right');
             msg.val('offline');
             wsconn.ws.close();
         }
