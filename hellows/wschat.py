@@ -45,7 +45,6 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         print('%02d | ws.open() <= %s' % (self.id, self.ip))
 
     def check_origin(self, origin):
-        print('    | check_origin, True')
         return True
 
     def ping(self):
@@ -177,10 +176,11 @@ def main():
     status_watcher()
 
     conf = {}
-    try:
-        conf = parse_conf(sys.argv[1])
-    except Exception as e:
-        print('Error loading config: ' + str(e))
+    if len(sys.argv) > 1:
+        try:
+            conf = parse_conf(sys.argv[1])
+        except Exception as e:
+            print('Error loading config: ' + str(e))
 
     kw = {}
     if conf.has_key('ssl_options'):
@@ -189,6 +189,7 @@ def main():
     http_server = tornado.httpserver.HTTPServer(application, **kw)
     port = conf.get('port', 8888)
     addr = conf.get('addr', '0.0.0.0')
+    print('Listening on %s:%d' % (addr, port))
     http_server.listen(port, address=addr);
     tornado.ioloop.IOLoop.instance().start()
 

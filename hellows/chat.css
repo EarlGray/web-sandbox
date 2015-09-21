@@ -57,25 +57,31 @@
     overflow-x: hidden;
     min-height: 200px;
 }
+#ulhist {
+    border-spacing: 0;
+}
 #ulhist tr {
     max-height: 1em;
+    /*margin-top: 0.2em;
+    margin-bottom: 0.2em;*/
 }
 
 .histtime {
     color: #8a9;
     font-size: 10pt;
+    padding-right: 0.5em;
 }
 .histuser {
-    color: blue;
-    width: 5em;
+    min-width: 5em;
     text-align: right;
     background-color: #f8f8ff;
-    padding: 0.2em 0.5em 0.1em 0.2em;
+    padding: 0.2em 0.8em 0.1em 0.8em;
     margin-right: 0.5em;
 }
 .histmsg {
     text-decoration: italic;
     padding: 0 0 0 1em;
+    /*border-bottom: 1px solid #c0c0c0;*/
 }
 
 #roster {
@@ -87,14 +93,10 @@
 }
 #rstr {
     width: 100%;
-    /*margin: 0.5em;*/
 }
-.rstrth {
-    /*border: 1px solid #ccc;*/
-}
+.rstrth { }
 .rstrtd {
     padding-left: 1.5em;
-    border-bottom: 1px solid #c0c0c0;
 }
 .rstrtd:last {
     padding-bottom: 1em;

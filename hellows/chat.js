@@ -1,6 +1,7 @@
 // Global state
 var wsconn;
 var user;
+var usr_css = {};
 var notifs;
 var online = false;
 var watchdog;
@@ -238,14 +239,28 @@ function appendMessage(sender, text, time) {
     var txt = prepareMessage(text);
     if (txt === null) return false; // do not send
 
-    var row = $('<tr/>').attr('id', 'msg' + time);
+    var row = $('<tr/>').attr('id', 'msg' + time).attr('data-user', sender);
+    /* histtime */
     if (sender == window.user)
         row.append($('<td/>').attr('class', 'histtime').append('sending'));
     else
         row.append($('<td/>').attr('class', 'histtime').append(histTimeFormat(new Date(time))));
 
-    row.append($('<td/>').attr('class', 'histuser').append(sender));
+    /* histusr */
+    var usr = sender;
+    var prevsender = $('#ulhist tbody tr:last').attr('data-user');
+    if (prevsender == sender)
+        usr = ''
+    var histusr = $('<td/>').attr('class', 'histuser').append(usr);
+    if (sender in usr_css) {
+        var color = usr_css[sender];
+        histusr[0].classList.add('usr' + color);
+    }
+    row.append(histusr);
+
+    /* histmsg */
     row.append($('<td/>').attr('class', 'histmsg').append(txt));
+
     $('#ulhist').append(row);
 
     var histdiv = $('#hist');
@@ -273,8 +288,21 @@ function rstrHeader() {
     $('#rstr').prepend($('<tr/>').append($('<th/>').text('user list').append('<hr/>')));
 }
 function userJoined(user) {
+    var color = usr_css[user];
+    if (!color) {
+        var randomLight = function () { return 224 + Math.floor(Math.random() * 32); };
+        var hexify = function (col) { return ('00' + col.toString(16)).substr(-2); };
+
+        var r = randomLight(), g = randomLight(), b = randomLight();
+        color = hexify(r) + hexify(g) + hexify(b);
+
+        var css_style = '.usr' + color + ' { background-color: #' + color + '; }';
+        $('head').append($('<style/>').attr('type', 'text/css').text(css_style));
+
+        usr_css[user] = color;
+    }
     var row = $('<tr/>');
-    row.append($('<td/>').attr('class', 'rstrtd').text(user));
+    row.append($('<td/>').attr('class', 'rstrtd usr' + color).text(user));
     $('#rstr').append(row);
 
     appendInfo('' + user + ' joined');
