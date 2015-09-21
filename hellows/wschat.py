@@ -44,6 +44,10 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         self.ip = self.request.remote_ip
         print('%02d | ws.open() <= %s' % (self.id, self.ip))
 
+    def check_origin(self, origin):
+        print('    | check_origin, True')
+        return True
+
     def ping(self):
         self.send_json({'type': 'ping'})
 

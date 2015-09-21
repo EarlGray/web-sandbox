@@ -250,6 +250,7 @@ function appendMessage(sender, text, time) {
 
     var histdiv = $('#hist');
     histdiv.scrollTop(histdiv[0].scrollHeight);
+    if (MathJax) MathJax.Hub.Typeset();
     return true;
 }
 function appendInfo(msg) {
