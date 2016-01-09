@@ -80,41 +80,58 @@ def path_game(game_id):
         flask.abort(404)
 
     game = the_games[game_id]
-    kwargs = {'game_id': game_id, 'bsize': game.size, 'n_shells': game.nturns}
+    kwargs = {
+        'game_id': game_id,
+        'game_finished': 'true' if (game.state != Game.ONGOING) else 'false',
+        'bsize': game.size,
+        'board': game.board,
+        'n_shells': game.nturns
+    }
     return flask.render_template('game.htm', **kwargs)
 
 
 @app.route('/ajax', methods=['POST'])
 def path_ajax():
+    def error_message(errmsg):
+        return json.dumps({'type': 'err', 'error': errmsg})
+
     try:
         params = request.form
 
         game_id = int(params['game_id'])
-        row = int(params['row'])
-        col = int(params['col'])
-
         if game_id not in the_games:
-            return json.dumps({'type': 'error', 'error': 'NoSuchGame'})
+            return error_message('NoSuchGame')
         game = the_games[game_id]
 
-        hit = game.guess(row, col)
-        state = game.get_state()
+        event = params['event']
 
-        respd = {
-            'type': 'ok',
-            'hit': hit,
-            'state': state,
-            'guesses': game.turn
-        }
-        if state == Game.OVER:
-            respd['ship_row'] = game.ship_row
-            respd['ship_col'] = game.ship_col
+        if event == 'guess':
+            if game.get_state() != Game.ONGOING:
+                return error_message('GameFinished')
 
-        resp = json.dumps(respd)
-        # print 'resp = ', resp
-        return resp
+            row = int(params['row'])
+            col = int(params['col'])
+
+            hit = game.guess(row, col)
+            state = game.get_state()
+
+            respd = {
+                'type': 'ok',
+                'hit': hit,
+                'state': state,
+                'guesses': game.turn
+            }
+            if state == Game.OVER:
+                respd['ship_row'] = game.ship_row
+                respd['ship_col'] = game.ship_col
+
+            resp = json.dumps(respd)
+            # print 'resp = ', resp
+            return resp
+        else:
+            return error_message('UnknownEvent');
     except KeyError, e:
-        resp = json.dumps({'type': 'error', 'error': str(e)})
+        resp = error_message(str(e))
         print 'resp =', resp
         return resp
 
@@ -124,4 +141,4 @@ def path_404(error):
     return flask.render_template('404.htm'), 404
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0')

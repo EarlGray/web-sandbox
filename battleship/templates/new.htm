@@ -1,22 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Battleship!</title>
+<title>Battleship!</title>
+<meta name='viewport' content='width=device-width, initial-scale=1'/>
 <style>
 body {
   text-align: center;
 }
-#newgame {
-  min-width: 20em;
-  width: 20%;
-  min-height: 5em;
-}
 </style>
+{% include 'styles.htm' %}
 <script type='text/javascript'>
 </script>
 </head>
 <body>
-  <h1>Welcome to Battleship!</h1>
+  <h1>Welcome to BattleShip Online!</h1>
   <form action="/create">
     <input id="newgame" type="submit" value="new game" autofocus="true" /> 
   </form>
