@@ -1,0 +1,127 @@
+from flask import Flask, request
+import flask
+import json
+
+from random import randint
+
+
+class Game:
+    OCEAN = 'O'
+    MISS = 'X'
+    HIT = 'S'
+
+    WON = 1
+    ONGOING = 0
+    OVER = -1
+
+    size = 4
+    nturns = 8
+
+    def __init__(self, *args):
+        board = []
+        for _ in xrange(self.size):
+            board.append([self.OCEAN] * self.size)
+
+        self.ship_row = randint(0, self.size - 1)
+        self.ship_col = randint(0, self.size - 1)
+        self.board = board
+        self.turn = Game.nturns
+        self.state = Game.ONGOING
+
+    def guess(self, row, col):
+        if (row, col) == (self.ship_row, self.ship_col):
+            self.board[row][col] = Game.HIT
+            self.state = Game.WON
+            return True
+
+        self.board[row][col] = Game.MISS
+        self.turn -= 1
+        if self.turn < 1:
+            self.state = Game.OVER
+        return False
+
+    def get_state(self):
+        """ returns Game.WON|Game.ONGOING|Game.OVER """
+        return self.state
+
+
+# Global state
+the_next_id = 0
+the_games = {}
+
+app = Flask(__name__)
+app.debug = True
+
+
+@app.route('/')
+def hello():
+    return flask.redirect(flask.url_for('path_new'))
+
+
+@app.route('/new')
+def path_new():
+    return flask.render_template('new.htm')
+
+
+@app.route('/create')
+def path_create():
+    global the_next_id
+    game_id = the_next_id
+    the_next_id += 1
+
+    the_games[game_id] = Game()
+    url = flask.url_for('path_game', game_id=game_id)
+    return flask.redirect(url)
+
+
+@app.route('/game/<int:game_id>')
+def path_game(game_id):
+    if game_id not in the_games:
+        flask.abort(404)
+
+    game = the_games[game_id]
+    kwargs = {'game_id': game_id, 'bsize': game.size, 'n_shells': game.nturns}
+    return flask.render_template('game.htm', **kwargs)
+
+
+@app.route('/ajax', methods=['POST'])
+def path_ajax():
+    try:
+        params = request.form
+
+        game_id = int(params['game_id'])
+        row = int(params['row'])
+        col = int(params['col'])
+
+        if game_id not in the_games:
+            return json.dumps({'type': 'error', 'error': 'NoSuchGame'})
+        game = the_games[game_id]
+
+        hit = game.guess(row, col)
+        state = game.get_state()
+
+        respd = {
+            'type': 'ok',
+            'hit': hit,
+            'state': state,
+            'guesses': game.turn
+        }
+        if state == Game.OVER:
+            respd['ship_row'] = game.ship_row
+            respd['ship_col'] = game.ship_col
+
+        resp = json.dumps(respd)
+        # print 'resp = ', resp
+        return resp
+    except KeyError, e:
+        resp = json.dumps({'type': 'error', 'error': str(e)})
+        print 'resp =', resp
+        return resp
+
+
+@app.errorhandler(404)
+def path_404(error):
+    return flask.render_template('404.htm'), 404
+
+if __name__ == '__main__':
+    app.run()

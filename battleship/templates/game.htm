@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Battleship Online!</title>
+<style type='text/css'>
+body { text-align: center; }
+#board {
+  margin-left: auto;
+  margin-right: auto;
+}
+#board td {
+  font-size: 2em;
+  width: 2em;
+  height: 2em;
+  border: 1px solid #aaa;    
+}
+#info {
+  margin-top: 1em;
+  font-size: 2em;
+}
+#counter {
+  margin-top: 1em;
+}
+#newgame {
+  min-width: 20em;
+  width: 20%;
+  min-height: 5em;
+}
+</style>
+<script src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+<script type='text/javascript'>
+var game_id = {{ game_id }};
+var game_finished = false;
+var n_shells = {{ n_shells }};
+
+var cellclick = function(row, col) {
+  console.log('click at (%d,%d)', row, col);
+  if (game_finished)
+    return;
+
+  var cell = $('#td' + row + col);
+
+  $.ajax('/ajax', {
+    method: 'POST',
+    dataType: 'json',
+    data: {
+      'game_id': game_id,
+      'event': 'click',
+      'row': row,
+      'col': col
+    },
+
+    success: function (resp, stat, xhr) {
+      console.log('response[%s]:click (%s,%s) = %s', stat, row, col, JSON.stringify(resp));
+      if (resp.type !== 'ok') {
+        $('#info').text(JSON.stringify(resp));
+        return;
+      }
+
+      cell.text(resp.hit ? 'S' : 'x');
+      $('#info').text(resp.hit ? 'good shot!' : 'whoosh!');
+      $('#n_shells').text('* '.repeat(resp.guesses));
+      switch (resp.state) {
+        case 0: break;
+        case -1: 
+          game_finished = true;                
+          $('#info').text('Game Over');
+          var shipcell = $('#td' + resp.ship_row + resp.ship_col);
+          shipcell.text('S');
+          shipcell.css('background-color', '#ffb8c8');
+          return;
+        case 1:
+          game_finished = true;
+          cell.css('background-color', '#b8ffc8');
+          $('#info').text('You Win!');
+          return;
+        default:
+          console.log('oops, resp.state = %d', resp.state);
+          return;          
+      }
+    },
+
+    error: function (xhr, stat, err) {
+      console.log('response[FAIL:%s]:click(%s,%s)', stat, row, col);
+      $('#info').text('Error: ' + err);
+    },
+  });
+};
+
+var pageloaded = function() {
+  $('#n_shells').text('* '.repeat(n_shells))
+}
+</script>
+</head>
+<body onload="pageloaded()">
+  <h1>Battleship online!</h1>
+  <form action="/create">
+    <input id="newgame" type="submit" value="new game" />
+  </form>
+  <hr />
+  <table id="board">
+{% for row in range(bsize): %}
+      <tr>
+        {% for col in range(bsize): %}
+        <td id='td{{row}}{{col}}' onclick='cellclick({{row}}, {{col}})'></td>
+        {% endfor %}
+      </tr>
+{% endfor %}
+  </table>
+  <div id="counter"><span id="n_shells"></span></div>
+  <div id="info">Let's play!</div>
+</body>
+</html>
