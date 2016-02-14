@@ -31,7 +31,7 @@ var n_shells = {{ n_shells }};
 
 var ajaxcall = function(req, onsuccess, onerror) {
   $.ajax({
-    url: '/ajax',
+    url: "{{ url_for('battleship.path_ajax') }}",
     method: 'POST',
     dataType: 'json',
     data: req,
@@ -104,7 +104,7 @@ var pageloaded = function() {
 </head>
 <body onload="pageloaded()">
   <h1>BattleShip Online!</h1>
-  <form action="/create">
+  <form action="{{ url_for('battleship.path_create') }}">
     <input id="newgame" type="submit" value="new game" />
   </form>
   <hr />

@@ -49,32 +49,31 @@ class Game:
 the_next_id = 0
 the_games = {}
 
-app = Flask(__name__)
-app.debug = True
+gamelet = flask.Blueprint('battleship', __name__)
 
 
-@app.route('/')
+@gamelet.route('/')
 def hello():
-    return flask.redirect(flask.url_for('path_new'))
+    return flask.redirect(flask.url_for('battleship.path_create'))
 
 
-@app.route('/new')
+@gamelet.route('/new')
 def path_new():
     return flask.render_template('new.htm')
 
 
-@app.route('/create')
+@gamelet.route('/create')
 def path_create():
     global the_next_id
     game_id = the_next_id
     the_next_id += 1
 
     the_games[game_id] = Game()
-    url = flask.url_for('path_game', game_id=game_id)
+    url = flask.url_for('battleship.path_game', game_id=game_id)
     return flask.redirect(url)
 
 
-@app.route('/game/<int:game_id>')
+@gamelet.route('/game/<int:game_id>')
 def path_game(game_id):
     if game_id not in the_games:
         flask.abort(404)
@@ -90,7 +89,7 @@ def path_game(game_id):
     return flask.render_template('game.htm', **kwargs)
 
 
-@app.route('/ajax', methods=['POST'])
+@gamelet.route('/ajax', methods=['POST'])
 def path_ajax():
     def error_message(errmsg):
         return json.dumps({'type': 'err', 'error': errmsg})
@@ -129,16 +128,27 @@ def path_ajax():
             # print 'resp = ', resp
             return resp
         else:
-            return error_message('UnknownEvent');
+            return error_message('UnknownEvent')
+
     except KeyError, e:
         resp = error_message(str(e))
         print 'resp =', resp
         return resp
 
 
-@app.errorhandler(404)
-def path_404(error):
-    return flask.render_template('404.htm'), 404
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0')
+    import sys
+    conf = {'debug': True}
+    if len(sys.argv) == 2:
+        with open(sys.argv[1]) as f:
+            conf = json.loads(f.read())
+
+    app = Flask(__name__)
+    app.debug = conf.get('debug')
+    app.register_blueprint(gamelet, url_prefix=conf.get('urlpre'))
+
+    @app.errorhandler(404)
+    def path_404(error):
+        return flask.render_template('404.htm'), 404
+
+    app.run(host=conf.get('host'))
