@@ -1,39 +1,61 @@
 <!DOCTYPE html>
 <html lang='en'>
 <head>
+<meta charset='utf-8'>
 <title>Camera/mic example</title>
+<style>
+video { border: 1px solid blue; }
+</style>
 <script>
-function detectGetUserMedia() {
-    navigator.getUserMedia = (navigator.getUserMedia 
-        || navigator.webkitGetUserMedia 
-        || navigator.webkitGetUserMedia 
-        || navigator.mozGetUserMedia 
+window.RTCPeerConnection = window.RTCPeerConnection
+        || window.webkitRTCPeerConnection
+        || window.mozRTCPeerConnection
+        || window.msRTCPeerConnection;
+
+var pc = new RTCPeerConnection({iceServers: [{url: 'stun:stun.l.google.com:19302'}]});
+var err;
+
+var detectGetUserMedia = function () {
+    navigator.getUserMedia = (navigator.getUserMedia
+        || navigator.webkitGetUserMedia
+        || navigator.webkitGetUserMedia
+        || navigator.mozGetUserMedia
         || navigator.mzGetMedia);
     if (!navigator.getUserMedia)
         alert('This browser does not seem to support WebRTC');
-}
+};
 
 var rtcStreamSuccess = function (stream) {
     console.log('streamSuccess!');
-    var video = document.querySelector('video#vout');
+    pc.addStream(stream);
+    var video = document.querySelector('#vout');
     video.src = window.URL.createObjectURL(stream);
     video.onloadedmetadata = function (e) {
         console.log('video.onloadedmetadata( + ' + e + ')');
         video.play();
     };
-}
+};
 
 var rtcStreamError = function (err) {
-    console.log('streamError: ' + err);
-}
+    console.log('streamError: ' + err.name);
+    window.err = err;
+};
+
+var rtcInit = function () {
+    detectGetUserMedia();
+
+    var mediaContraints = {
+        audio : true,
+        video: {
+            mandatory: { width: { min: 640 }, height: { min: 480 } }
+        }
+    };
+    navigator.getUserMedia(mediaContraints, rtcStreamSuccess, rtcStreamError);
+    console.log('Should start');
+};
 </script>
 </head>
-<body>
-<video id='vout'></video>
-<script>
-detectGetUserMedia();
-
-navigator.getUserMedia({ video : true, audio : true }, rtcStreamSuccess, rtcStreamError);
-</script>
+<body onload='rtcInit()'>
+<video autoplay controls width='640' height='480' id='vout'></video>
 </body>
 </html>
