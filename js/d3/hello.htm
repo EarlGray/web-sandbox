@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>d3.js hello</title>
+<meta charset='utf-8'/>
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<style>
+body { background-color: lightgreen; }
+</style>
+<script>
+var kickstart = function() {
+    var rotr = document.getElementById('rotr');
+    var angle = 0;
+    setInterval(function () {
+        angle += 1;
+        rotr.setAttribute('transform', 'rotate(' + angle + ', 325, 75)');
+    }, 55);
+};
+</script>
+</head>
+<body onload='kickstart()'>
+<h1>d3.js</h1>
+<hr/>
+<svg id='im1'xmlns='http://www.w3.org/2000/svg'
+     width='400' height='300'>
+  <defs>
+    <filter id='blurFilter' y='-5' height='40'>
+      <feGaussianBlue in='SourceGraphic' stdDeviation='3' y='-4' />
+    </filter>
+  </defs>
+  <rect id='bgnd' x='0' y='0' width='400' height='300' style='fill:blue'/>
+  <rect id='rotr' x='300' y='50' width='50' height='50'
+        style='fill:white;'
+        transform='rotate(20, 325, 75)' />
+  <circle cx='150' cy='150' r='100' style='fill:white'
+          onmouseover='this.style.fill = "yellow";'
+          onmouseout='this.style.fill = "white"'/>
+  <text id='txt1' x='50' y='280'
+        style='font-size:30;fill:yellow'>
+    Hello SVG!
+  </text>
+</svg>
+</body>
+</html>
