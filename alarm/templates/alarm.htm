@@ -6,26 +6,60 @@
 <style>
 form {
   text-align: center;
-  width: 95%;
+  width: 40%;
   margin: 0 auto;
+  font-size: 18pt;
   /*border: 1px dotted #552;*/
 }
 
 input {
-  width: 40%;
-  height: 4em;
+  height: 3em;
   min-width: 200px;
   max-width: 90%;
   margin: 5px auto;
 }
+
+#time {
+  font-size: 16pt;
+  text-align: center;
+}
+#doit {
+  font-size: 16pt;
+  width: 200px;
+}
 </style>
+<script>
+'use strict';
+var $ = function(selector) { return document.querySelector(selector); }
+var timeinput = null;
+var timer = null;
+
+function update() {
+    if ($(':focus') == timeinput) return;
+    timeinput.value = new Date().toTimeString().slice(0, 8);
+}
+
+function onVisibility() {
+    console.log(document.visibilityState);
+    switch (document.visibilityState) {
+    case 'hidden': clearInterval(timer); timer = null; break;
+    case 'visible': timer = setInterval(timer); break;
+    }
+}
+
+function init() {
+    timeinput = $('#time');
+    document.addEventListener('visibilitychange', onVisibility);
+    timer = setInterval(update, 1000);
+}
+</script>
 </head>
-<body>
-  <form action='/start' method='POST'>
-    <input type='submit' value='Start' />  
-  </form>
-  <form action='/stop' method='POST'>
-    <input type='submit' value='Stop' />
+<body onload='init()'>
+  <form id='alarm' action='/start' method='POST'>
+   <fieldset><legend> alarm </legend>
+    <input name='time' id='time' type='time' step='1' /><br/>
+    <input name='doit' id='doit' type='submit' value='{{ btncap }}' />  
+   </fieldset>
   </form>
 </body>
 </html>
