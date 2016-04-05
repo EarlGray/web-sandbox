@@ -8,7 +8,7 @@
 <body>
   <h1>BattleShip Online</h1>
   <h2>404: not found</h2>
-  <form action='/create'>
+  <form action="{{ url_for('battleship.path_create') }}">
     <input id="newgame" value="new game" type="submit" autofocus="true" />
   </form>
 </body>

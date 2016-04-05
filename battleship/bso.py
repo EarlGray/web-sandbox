@@ -54,7 +54,9 @@ gamelet = flask.Blueprint('battleship', __name__)
 
 @gamelet.route('/')
 def hello():
-    return flask.redirect(flask.url_for('battleship.path_create'))
+    url = flask.url_for('battleship.path_create')
+    print(url)
+    return flask.redirect(url)
 
 
 @gamelet.route('/new')
