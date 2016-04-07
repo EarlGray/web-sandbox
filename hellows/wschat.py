@@ -13,11 +13,16 @@ import tornado.websocket
 sessions = dict()
 watchdog = None
 
+
+def real_remote_ip(req):
+    return req.headers.get('X-Real-IP', req.remote_ip)
+
+
 class FileHandler(tornado.web.RequestHandler):
     filemap = { '' : 'index.htm' }
 
     def get(self, reqpath):
-        remote_ip = self.request.headers.get('X-Real-IP', self.request.remote_ip)
+        remote_ip = real_remote_ip(self.request)
 
         fname = self.filemap.get(reqpath, reqpath)
         if not os.path.exists(fname):
@@ -32,6 +37,7 @@ class FileHandler(tornado.web.RequestHandler):
 
         self.render(fname)
 
+
 class WSHandler(tornado.websocket.WebSocketHandler):
     ws_counter = 0
 
@@ -41,7 +47,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         self.id = WSHandler.ws_counter
         WSHandler.ws_counter = WSHandler.ws_counter + 1
 
-        self.ip = self.request.remote_ip
+        self.ip = real_remote_ip(self.request)
         print('%02d | ws.open() <= %s' % (self.id, self.ip))
 
     def check_origin(self, origin):
