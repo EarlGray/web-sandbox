@@ -137,6 +137,20 @@ def path_ajax():
         print 'resp =', resp
         return resp
 
+def werkzeug_log_forwardedfor():
+    from werkzeug.serving import WSGIRequestHandler
+
+    def address_string(self):
+        forwarded_for = self.headers.get('X-Forwarded-For', '').split(',')
+        if forwarded_for and forwarded_for[0]:
+            return forwarded_for[0]
+        forwarded_for = self.headers.get('X-Real-IP', '')
+        if forwarded_for:
+            return forwarded_for
+        return self.client_address[0]
+
+    WSGIRequestHandler.address_string = address_string
+
 
 if __name__ == '__main__':
     import sys
@@ -144,6 +158,8 @@ if __name__ == '__main__':
     if len(sys.argv) == 2:
         with open(sys.argv[1]) as f:
             conf = json.loads(f.read())
+
+    werkzeug_log_forwardedfor()
 
     app = Flask(__name__)
     app.debug = conf.get('debug')
