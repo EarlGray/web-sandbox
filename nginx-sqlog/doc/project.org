@@ -1,0 +1,7 @@
+* Progress
+  
+** TODO fsnotify
+** TODO parsing, quering nginx format
+** TODO mysql interface
+** TODO analyses: simple dashboard
+   Snap? Happstack? Scotty? 
